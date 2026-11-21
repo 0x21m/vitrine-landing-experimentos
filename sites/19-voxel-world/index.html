@@ -1,0 +1,587 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Plinthwick — Voxel Sandbox</title>
+<meta name="description" content="Rent a cube. Build the air. Plinthwick rents one 16 by 16 by 16 block cube inside a shared voxel city.">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=VT323&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#C9C4B5;
+  --surface:#E6E2D3;
+  --text:#1A1A1A;
+  --accent:#1F6FB2;
+  --status:#C2412D;
+  --hi:#F7F5EE;
+  --lo:#8E897A;
+  --halo:rgba(31,111,178,.28);
+  --scan:rgba(26,26,26,.06);
+  --display:"VT323","Courier New",monospace;
+  --body:"IBM Plex Sans",Arial,Helvetica,sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{background-color:var(--bg);-webkit-text-size-adjust:100%}
+body{
+  margin:0;
+  background-color:var(--bg);
+  color:var(--text);
+  font:400 17px/1.55 var(--body);
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+  overflow-x:hidden;
+  -webkit-font-smoothing:antialiased;
+}
+body::after{
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:9;
+  background:repeating-linear-gradient(to bottom,var(--scan) 0 1px,transparent 1px 3px);
+}
+p{margin:0 0 14px}
+h1,h2{font-family:var(--display);font-weight:400;margin:0 0 14px;line-height:.95;text-shadow:0 0 6px var(--halo)}
+h1{font-size:clamp(46px,6.4vw,96px)}
+h1 span{display:block}
+h2{font-size:clamp(38px,4.6vw,56px)}
+a{color:var(--accent)}
+a:focus-visible,button:focus-visible,.mats:focus-visible{outline:3px dotted var(--accent);outline-offset:3px}
+
+/* canvas: hidden until WebGL is confirmed */
+#scene{position:fixed;inset:0;width:100%;height:100%;z-index:0;display:none;touch-action:pan-y;outline:none}
+.webgl #scene{display:block}
+.webgl .iso{display:none}
+
+.top{position:relative;z-index:2;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 16px;padding:16px 0}
+.brand{font:400 32px/1 var(--display);letter-spacing:2px;color:var(--text);text-decoration:none}
+.top nav{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:15px}
+
+main{position:relative;z-index:1}
+.scene-s{position:relative;min-height:100vh;min-height:100svh;display:flex;align-items:center;padding:8px 0 40px;pointer-events:none}
+.panel{
+  pointer-events:auto;position:relative;width:100%;max-width:440px;
+  background:var(--surface);color:var(--text);
+  border:3px solid;border-color:var(--hi) var(--text) var(--text) var(--hi);
+  box-shadow:6px 6px 0 var(--lo);padding:24px;
+}
+.kicker{margin:0 0 12px;font:400 22px/1 var(--display);color:var(--accent);text-transform:uppercase;letter-spacing:1px}
+.cur{animation:blink 1s steps(2,start) infinite}
+@keyframes blink{to{visibility:hidden}}
+.lede{font-size:19px;margin:0}
+.hint{font:400 22px/1 var(--display);color:var(--accent);margin:18px 0 0}
+
+.iso{margin:18px 0 0}
+.iso svg{display:block;width:100%;max-width:320px;height:auto;margin:0 auto}
+
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:20px 0 0}
+.stats div{border-top:3px solid var(--text);padding-top:6px}
+.stats dt{font-size:14px;line-height:1.2;margin:0}
+.stats dd{margin:0;font:400 44px/1 var(--display)}
+
+.mats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:16px 0;touch-action:pan-y;user-select:none}
+.mat{
+  min-height:48px;font:500 16px var(--body);color:var(--text);background:var(--bg);cursor:pointer;
+  border:3px solid;border-color:var(--hi) var(--text) var(--text) var(--hi);padding:6px 4px;
+}
+.mat[aria-pressed="true"]{background:var(--accent);color:var(--hi);border-color:var(--text) var(--hi) var(--hi) var(--text)}
+.price-line{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;margin:0 0 12px}
+.price-line span{font-size:15px}
+#price{font:400 68px/1 var(--display);color:var(--accent);text-shadow:0 0 8px var(--halo);font-variant-numeric:tabular-nums}
+
+.big{font:400 88px/.9 var(--display);color:var(--accent);margin:8px 0 12px}
+.big small{font-size:28px;color:var(--text)}
+ul{padding-left:20px;margin:0 0 18px}
+li{margin:4px 0}
+.btn{
+  font:600 18px var(--body);color:var(--text);background:var(--surface);cursor:pointer;min-height:48px;padding:12px 22px;
+  border:3px solid;border-color:var(--hi) var(--text) var(--text) var(--hi);
+}
+.btn:active{border-color:var(--text) var(--hi) var(--hi) var(--text)}
+.fine{font-size:14px;margin:12px 0 0}
+
+#tip{
+  position:fixed;z-index:10;left:0;top:0;pointer-events:none;white-space:nowrap;
+  font:400 20px/1 var(--display);background:var(--surface);color:var(--text);
+  border:3px solid;border-color:var(--hi) var(--text) var(--text) var(--hi);padding:6px 8px;
+}
+#toast{
+  position:fixed;z-index:10;top:14px;left:50%;transform:translate(-50%,-180%);pointer-events:none;
+  font:400 24px/1 var(--display);background:var(--surface);color:var(--text);max-width:calc(100vw - 48px);text-align:center;
+  border:3px solid;border-color:var(--hi) var(--text) var(--text) var(--hi);padding:8px 14px;
+  transition:transform .25s ease;
+}
+#toast.on{transform:translate(-50%,0)}
+[hidden]{display:none!important}
+
+.foot{position:relative;z-index:1;padding:48px 0 28px;font-size:14px}
+.tmpl{font:400 14px/1.2 var(--display);opacity:.7;margin:0 0 10px;transition:opacity .4s}
+.tmpl.gone{opacity:0}
+
+@media (min-width:900px){
+  .scene-s{padding:72px 0}
+  .panel{max-width:440px}
+}
+@media (max-width:767px){
+  .scene-s{min-height:auto;padding:8px 0 28px}
+  .panel{max-width:none;padding:20px}
+  h1{font-size:clamp(46px,12.5vw,64px)}
+  .top{padding:12px 0}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+}
+</style>
+</head>
+<body>
+<canvas id="scene" aria-hidden="true"></canvas>
+<div id="tip" hidden></div>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<header class="top">
+  <a class="brand" href="#top">PLINTHWICK</a>
+  <nav aria-label="Sections">
+    <a href="#rent">How renting works</a>
+    <a href="#catalog">Blocks</a>
+    <a href="#city">The city</a>
+    <a href="#subscribe">Rent</a>
+  </nav>
+</header>
+
+<main id="page">
+
+  <section class="scene-s" id="top" aria-labelledby="hero-title">
+    <div class="panel">
+      <p class="kicker">Block sandbox for builders<span class="cur">_</span></p>
+      <h1 id="hero-title"><span>Rent a cube.</span><span>Build the air.</span></h1>
+      <p class="lede">Sixteen blocks on each side. Nothing else included.</p>
+      <p class="hint">Scroll to build</p>
+      <figure class="iso" aria-hidden="true">
+        <svg viewBox="0 0 400 180" focusable="false">
+          <g transform="translate(0 30)">
+<polygon points="215.6,69.0 200.0,78.0 200.0,60.0 215.6,51.0" fill="#657a84"/><polygon points="184.4,69.0 200.0,78.0 200.0,60.0 184.4,51.0" fill="#87a2b0"/><polygon points="200.0,42.0 215.6,51.0 200.0,60.0 184.4,51.0" fill="#A9CBDC"/>
+<polygon points="231.2,78.0 215.6,87.0 215.6,69.0 231.2,60.0" fill="#53361f"/><polygon points="200.0,78.0 215.6,87.0 215.6,69.0 200.0,60.0" fill="#6e482a"/><polygon points="215.6,51.0 231.2,60.0 215.6,69.0 200.0,60.0" fill="#8A5A34"/>
+<polygon points="200.0,78.0 184.4,87.0 184.4,69.0 200.0,60.0" fill="#7b6f53"/><polygon points="168.8,78.0 184.4,87.0 184.4,69.0 168.8,60.0" fill="#a4946e"/><polygon points="184.4,51.0 200.0,60.0 184.4,69.0 168.8,60.0" fill="#CDB98A"/>
+<polygon points="246.8,87.0 231.2,96.0 231.2,78.0 246.8,69.0" fill="#7b6f53"/><polygon points="215.6,87.0 231.2,96.0 231.2,78.0 215.6,69.0" fill="#a4946e"/><polygon points="231.2,60.0 246.8,69.0 231.2,78.0 215.6,69.0" fill="#CDB98A"/>
+<polygon points="215.6,87.0 200.0,96.0 200.0,78.0 215.6,69.0" fill="#657a84"/><polygon points="184.4,87.0 200.0,96.0 200.0,78.0 184.4,69.0" fill="#87a2b0"/><polygon points="200.0,60.0 215.6,69.0 200.0,78.0 184.4,69.0" fill="#A9CBDC"/>
+<polygon points="184.4,87.0 168.8,96.0 168.8,78.0 184.4,69.0" fill="#53361f"/><polygon points="153.2,87.0 168.8,96.0 168.8,78.0 153.2,69.0" fill="#6e482a"/><polygon points="168.8,60.0 184.4,69.0 168.8,78.0 153.2,69.0" fill="#8A5A34"/>
+<polygon points="262.4,96.0 246.8,105.0 246.8,87.0 262.4,78.0" fill="#657a84"/><polygon points="231.2,96.0 246.8,105.0 246.8,87.0 231.2,78.0" fill="#87a2b0"/><polygon points="246.8,69.0 262.4,78.0 246.8,87.0 231.2,78.0" fill="#A9CBDC"/>
+<polygon points="231.2,96.0 215.6,105.0 215.6,87.0 231.2,78.0" fill="#657a84"/><polygon points="200.0,96.0 215.6,105.0 215.6,87.0 200.0,78.0" fill="#87a2b0"/><polygon points="215.6,69.0 231.2,78.0 215.6,87.0 200.0,78.0" fill="#A9CBDC"/>
+<polygon points="200.0,96.0 184.4,105.0 184.4,87.0 200.0,78.0" fill="#7b6f53"/><polygon points="168.8,96.0 184.4,105.0 184.4,87.0 168.8,78.0" fill="#a4946e"/><polygon points="184.4,69.0 200.0,78.0 184.4,87.0 168.8,78.0" fill="#CDB98A"/>
+<polygon points="168.8,96.0 153.2,105.0 153.2,87.0 168.8,78.0" fill="#657a84"/><polygon points="137.6,96.0 153.2,105.0 153.2,87.0 137.6,78.0" fill="#87a2b0"/><polygon points="153.2,69.0 168.8,78.0 153.2,87.0 137.6,78.0" fill="#A9CBDC"/>
+<polygon points="215.6,69.0 200.0,78.0 200.0,60.0 215.6,51.0" fill="#822940"/><polygon points="184.4,69.0 200.0,78.0 200.0,60.0 184.4,51.0" fill="#ad3756"/><polygon points="200.0,42.0 215.6,51.0 200.0,60.0 184.4,51.0" fill="#D8456B"/>
+<polygon points="246.8,105.0 231.2,114.0 231.2,96.0 246.8,87.0" fill="#53361f"/><polygon points="215.6,105.0 231.2,114.0 231.2,96.0 215.6,87.0" fill="#6e482a"/><polygon points="231.2,78.0 246.8,87.0 231.2,96.0 215.6,87.0" fill="#8A5A34"/>
+<polygon points="215.6,105.0 200.0,114.0 200.0,96.0 215.6,87.0" fill="#822940"/><polygon points="184.4,105.0 200.0,114.0 200.0,96.0 184.4,87.0" fill="#ad3756"/><polygon points="200.0,78.0 215.6,87.0 200.0,96.0 184.4,87.0" fill="#D8456B"/>
+<polygon points="184.4,105.0 168.8,114.0 168.8,96.0 184.4,87.0" fill="#53361f"/><polygon points="153.2,105.0 168.8,114.0 168.8,96.0 153.2,87.0" fill="#6e482a"/><polygon points="168.8,78.0 184.4,87.0 168.8,96.0 153.2,87.0" fill="#8A5A34"/>
+<polygon points="231.2,78.0 215.6,87.0 215.6,69.0 231.2,60.0" fill="#657a84"/><polygon points="200.0,78.0 215.6,87.0 215.6,69.0 200.0,60.0" fill="#87a2b0"/><polygon points="215.6,51.0 231.2,60.0 215.6,69.0 200.0,60.0" fill="#A9CBDC"/>
+<polygon points="200.0,78.0 184.4,87.0 184.4,69.0 200.0,60.0" fill="#53361f"/><polygon points="168.8,78.0 184.4,87.0 184.4,69.0 168.8,60.0" fill="#6e482a"/><polygon points="184.4,51.0 200.0,60.0 184.4,69.0 168.8,60.0" fill="#8A5A34"/>
+<polygon points="231.2,114.0 215.6,123.0 215.6,105.0 231.2,96.0" fill="#657a84"/><polygon points="200.0,114.0 215.6,123.0 215.6,105.0 200.0,96.0" fill="#87a2b0"/><polygon points="215.6,87.0 231.2,96.0 215.6,105.0 200.0,96.0" fill="#A9CBDC"/>
+<polygon points="200.0,114.0 184.4,123.0 184.4,105.0 200.0,96.0" fill="#7b6f53"/><polygon points="168.8,114.0 184.4,123.0 184.4,105.0 168.8,96.0" fill="#a4946e"/><polygon points="184.4,87.0 200.0,96.0 184.4,105.0 168.8,96.0" fill="#CDB98A"/>
+<polygon points="231.2,60.0 215.6,69.0 215.6,51.0 231.2,42.0" fill="#7b6f53"/><polygon points="200.0,60.0 215.6,69.0 215.6,51.0 200.0,42.0" fill="#a4946e"/><polygon points="215.6,33.0 231.2,42.0 215.6,51.0 200.0,42.0" fill="#CDB98A"/>
+<polygon points="215.6,123.0 200.0,132.0 200.0,114.0 215.6,105.0" fill="#657a84"/><polygon points="184.4,123.0 200.0,132.0 200.0,114.0 184.4,105.0" fill="#87a2b0"/><polygon points="200.0,96.0 215.6,105.0 200.0,114.0 184.4,105.0" fill="#A9CBDC"/>
+<polyline fill="none" stroke="#1F6FB2" stroke-width="2" points="200.0,-12.0 262.4,24.0 200.0,60.0 137.6,24.0 200.0,-12.0"/><polyline fill="none" stroke="#1F6FB2" stroke-width="2" points="262.4,96.0 262.4,24.0"/><polyline fill="none" stroke="#1F6FB2" stroke-width="2" points="200.0,132.0 200.0,60.0"/><polyline fill="none" stroke="#1F6FB2" stroke-width="2" points="137.6,96.0 137.6,24.0"/><polyline fill="none" stroke="#1F6FB2" stroke-width="2" points="200.0,60.0 200.0,-12.0"/>
+          </g>
+        </svg>
+      </figure>
+    </div>
+  </section>
+
+  <section class="scene-s" id="rent" aria-labelledby="rent-title">
+    <div class="panel">
+      <p class="kicker">01 · Rent</p>
+      <h2 id="rent-title">One cube, sixteen blocks a side.</h2>
+      <p>Every cube is 16 × 16 × 16 blocks. You get the full volume, the floor is yours, and nothing gets placed inside it unless you place it.</p>
+      <p>Hover a block to read its number.</p>
+      <dl class="stats">
+        <div><dt>Blocks per side</dt><dd>16</dd></div>
+        <div><dt>Blocks per cube</dt><dd>4096</dd></div>
+        <div><dt>Cubes per plan</dt><dd>1</dd></div>
+      </dl>
+    </div>
+  </section>
+
+  <section class="scene-s" id="catalog" aria-labelledby="catalog-title">
+    <div class="panel">
+      <p class="kicker">02 · Blocks</p>
+      <h2 id="catalog-title">Choose what fills the air.</h2>
+      <p>Four materials, sold by the pack. Pick one below, or drag across the row, to change the material of the selected block.</p>
+      <div class="mats" id="mats" role="group" aria-label="Block materials" tabindex="0">
+        <button type="button" class="mat" aria-pressed="true">Glass</button>
+        <button type="button" class="mat" aria-pressed="false">Wood</button>
+        <button type="button" class="mat" aria-pressed="false">Neon</button>
+        <button type="button" class="mat" aria-pressed="false">Sand</button>
+      </div>
+      <p class="price-line"><span>Price per block</span><span>$</span><output id="price" for="mats">0.40</output></p>
+      <p class="fine">Click a glass block in the scene to save your cube.</p>
+    </div>
+  </section>
+
+  <section class="scene-s" id="city" aria-labelledby="city-title">
+    <div class="panel">
+      <p class="kicker">03 · The city</p>
+      <h2 id="city-title">Your cube sits in a city you share.</h2>
+      <p>Every lot in Plinthwick is a cube rented by someone else. When a neighbor places a block, it lights up blue for a moment.</p>
+      <p>You build inside the city, and the city builds around you.</p>
+    </div>
+  </section>
+
+  <section class="scene-s" id="subscribe" aria-labelledby="sub-title">
+    <div class="panel">
+      <p class="kicker">04 · Rent</p>
+      <h2 id="sub-title">Rent a cube. Keep the air.</h2>
+      <p class="big">$9<small> / month</small></p>
+      <ul>
+        <li>One cube, 16 × 16 × 16 blocks</li>
+        <li>Four block packs: glass, wood, neon, sand</li>
+        <li>A postcard render of your build, every month</li>
+      </ul>
+      <button type="button" class="btn" id="rent-btn">Rent a cube</button>
+      <p class="fine">Cancel from your account at any time.</p>
+    </div>
+  </section>
+
+</main>
+
+<footer class="foot">
+  <p class="tmpl" id="tmpl">Catalog template page, not a live store.</p>
+  <p>&copy; 2026 Plinthwick. All blocks reserved.</p>
+</footer>
+
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.15.1/gsap.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.15.1/ScrollTrigger.min.js"></script>
+<script type="module">
+(async () => {
+  const $ = (s) => document.querySelector(s);
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const small = matchMedia('(max-width: 767px)').matches;
+  const hasGsap = !!(window.gsap && window.ScrollTrigger);
+  if (hasGsap) gsap.registerPlugin(ScrollTrigger);
+
+  const BLOCKS = [
+    { name: 'Glass', hex: 0xA9CBDC, price: 0.40 },
+    { name: 'Wood',  hex: 0x8A5A34, price: 0.25 },
+    { name: 'Neon',  hex: 0xD8456B, price: 0.90 },
+    { name: 'Sand',  hex: 0xCDB98A, price: 0.10 }
+  ];
+
+  let frozenUntil = 0;
+  let onMaterial = () => {};
+
+  /* ---------- UI (works without WebGL) ---------- */
+  const toastEl = $('#toast');
+  let toastTimer = 0;
+  const toast = (msg) => {
+    toastEl.textContent = msg;
+    toastEl.classList.add('on');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toastEl.classList.remove('on'), 1400);
+  };
+
+  const priceEl = $('#price');
+  const price = { v: BLOCKS[0].price };
+  const matGroup = $('#mats');
+  const btns = [...matGroup.querySelectorAll('.mat')];
+  let matIndex = 0;
+  const setPrice = (i) => {
+    const target = BLOCKS[i].price;
+    if (hasGsap && !reduce) {
+      gsap.to(price, { v: target, duration: 0.45, ease: 'power1.out', onUpdate: () => { priceEl.textContent = price.v.toFixed(2); } });
+    } else {
+      price.v = target;
+      priceEl.textContent = target.toFixed(2);
+    }
+  };
+  const setMat = (i) => {
+    matIndex = (i + BLOCKS.length) % BLOCKS.length;
+    btns.forEach((b, k) => b.setAttribute('aria-pressed', String(k === matIndex)));
+    setPrice(matIndex);
+    onMaterial(matIndex);
+  };
+  btns.forEach((b, k) => b.addEventListener('click', () => setMat(k)));
+  let dragX = null;
+  matGroup.addEventListener('pointerdown', (e) => { dragX = e.clientX; });
+  matGroup.addEventListener('pointermove', (e) => {
+    if (dragX === null) return;
+    const dx = e.clientX - dragX;
+    if (Math.abs(dx) >= 36) { setMat(matIndex + (dx < 0 ? 1 : -1)); dragX = e.clientX; }
+  });
+  addEventListener('pointerup', () => { dragX = null; });
+  matGroup.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+      e.preventDefault();
+      setMat(matIndex + (e.key === 'ArrowRight' ? 1 : -1));
+    }
+  });
+  setMat(0);
+
+  const tmpl = $('#tmpl');
+  const checkEnd = () => tmpl.classList.toggle('gone', innerHeight + scrollY >= document.documentElement.scrollHeight - 4);
+  addEventListener('scroll', checkEnd, { passive: true });
+  checkEnd();
+
+  $('#rent-btn').addEventListener('click', () => {
+    frozenUntil = performance.now() + 1200;
+    toast('Saved. Your cube is frozen in place.');
+  });
+
+  /* ---------- 3D (only when WebGL works) ---------- */
+  const probe = document.createElement('canvas');
+  if (!(probe.getContext('webgl2') || probe.getContext('webgl'))) return;
+  let THREE;
+  try {
+    THREE = await import('https://cdn.jsdelivr.net/npm/three@0.187.0/build/three.module.js');
+  } catch (err) {
+    return;
+  }
+
+  function init3D() {
+    const canvas = $('#scene');
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: !small, powerPreference: 'high-performance' });
+    renderer.setPixelRatio(Math.min(devicePixelRatio || 1, small ? 1.5 : 2));
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0xC9C4B5);
+    const camera = new THREE.PerspectiveCamera(34, 1, 0.1, 400);
+    scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+    const sun = new THREE.DirectionalLight(0xffffff, 1.1);
+    sun.position.set(20, 40, 25);
+    scene.add(sun);
+    scene.add(new THREE.GridHelper(120, 30, 0x9C978A, 0xB3AE9F));
+
+    const ACCENT = new THREE.Color(0x1F6FB2);
+    const COLORS = BLOCKS.map((b) => new THREE.Color(b.hex));
+    const blockGeo = new THREE.BoxGeometry(0.92, 0.92, 0.92);
+    const blockMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
+    const m4 = new THREE.Matrix4();
+
+    let seed = 1994;
+    const rand = () => {
+      seed |= 0; seed = (seed + 0x6D2B79F5) | 0;
+      let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+    let serial = 100;
+    const WEIGHTS = [0.35, 0.35, 0.1, 0.2];
+    const pickMat = (w) => {
+      let r = rand();
+      for (let i = 0; i < w.length; i++) { r -= w[i]; if (r < 0) return i; }
+      return w.length - 1;
+    };
+
+    function makeBlocks(cells) {
+      const mesh = new THREE.InstancedMesh(blockGeo, blockMat, cells.length);
+      mesh.userData = { mats: [], serial: [], base: [], t: 0 };
+      cells.forEach((c, i) => {
+        m4.makeTranslation(c.x + 0.5, c.y + 0.5, c.z + 0.5);
+        mesh.setMatrixAt(i, m4);
+        mesh.setColorAt(i, COLORS[c.m]);
+        mesh.userData.mats.push(c.m);
+        mesh.userData.serial.push(c.s);
+        mesh.userData.base.push(COLORS[c.m]);
+      });
+      mesh.instanceMatrix.needsUpdate = true;
+      mesh.instanceColor.needsUpdate = true;
+      return mesh;
+    }
+
+    /* own cube: 16 layers, each its own instanced mesh */
+    const layers = [];
+    for (let y = 0; y < 16; y++) {
+      const p = y === 0 ? 0.72 : y < 3 ? 0.2 : 0.05;
+      const cells = [];
+      for (let x = 0; x < 16; x++) for (let z = 0; z < 16; z++) {
+        if (rand() < p) cells.push({ x, y, z, m: pickMat(WEIGHTS), s: serial++ });
+      }
+      if (!cells.length) cells.push({ x: 8, y, z: 8, m: 1, s: serial++ });
+      const mesh = makeBlocks(cells);
+      mesh.visible = false;
+      scene.add(mesh);
+      layers.push(mesh);
+    }
+    const cubeGeo = () => new THREE.BoxGeometry(16, 16, 16).translate(8, 8, 8);
+    scene.add(new THREE.Mesh(cubeGeo(), new THREE.MeshBasicMaterial({ color: 0xE6E2D3, transparent: true, opacity: 0.18, depthWrite: false })));
+    const ownEdges = new THREE.LineSegments(new THREE.EdgesGeometry(cubeGeo()), new THREE.LineBasicMaterial({ color: 0x1F6FB2, transparent: true }));
+    scene.add(ownEdges);
+
+    /* city: neighbour cubes, same 16 grid */
+    const cityState = { t: 0 };
+    const cityGroup = new THREE.Group();
+    cityGroup.visible = false;
+    scene.add(cityGroup);
+    const lots = small
+      ? [[0, 0], [2, 0], [0, 2], [2, 2]]
+      : [[0, 0], [1, 0], [2, 0], [0, 1], [2, 1], [0, 2], [1, 2], [2, 2]];
+    const cityCells = [];
+    const edgeMat = new THREE.LineBasicMaterial({ color: 0x8E897A });
+    for (const [i, j] of lots) {
+      const ox = (i - 1) * 20, oz = (j - 1) * 20;
+      for (let x = 0; x < 16; x++) for (let z = 0; z < 16; z++) {
+        if (rand() < 0.22) {
+          const h = 1 + Math.floor(rand() * rand() * 5);
+          for (let y = 0; y < h; y++) cityCells.push({ x: ox + x, y, z: oz + z, m: pickMat(WEIGHTS), s: serial++ });
+        }
+      }
+      cityGroup.add(new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(16, 16, 16).translate(ox + 8, 8, oz + 8)), edgeMat));
+    }
+    const cityMesh = makeBlocks(cityCells);
+    cityGroup.add(cityMesh);
+
+    /* camera poses: hero, floor, catalog, city, final */
+    const POSE = [
+      { px: 40, py: 30, pz: 40, lx: 8, ly: 7, lz: 8 },
+      { px: 30, py: 14, pz: 36, lx: 8, ly: 6, lz: 8 },
+      { px: 30, py: 26, pz: 30, lx: 8, ly: 9, lz: 8 },
+      { px: 66, py: 64, pz: 66, lx: 8, ly: 4, lz: 8 },
+      { px: 22, py: 22, pz: 24, lx: 8, ly: 9, lz: 8 }
+    ];
+    const toPose = (p) => ({ px: p.px, py: p.py, pz: p.pz, lx: p.lx, ly: p.ly, lz: p.lz });
+    const cam = { ...toPose(POSE[0]), drag: 0, spin: 0, orbit: 0 };
+
+    /* selected block: first block of layer 1, starts as glass */
+    const selected = { mesh: layers[1], id: 0 };
+    const hoverRef = { h: null };
+    const same = (a, b) => !!a && !!b && a.mesh === b.mesh && a.id === b.id;
+    const paint = (mesh, id, col) => { mesh.setColorAt(id, col); mesh.instanceColor.needsUpdate = true; };
+    const applyMaterial = (i) => {
+      const s = selected;
+      s.mesh.userData.mats[s.id] = i;
+      s.mesh.userData.base[s.id] = COLORS[i];
+      paint(s.mesh, s.id, same(hoverRef.h, s) ? ACCENT : COLORS[i]);
+    };
+    onMaterial = applyMaterial;
+    applyMaterial(matIndex);
+
+    /* scroll mapping */
+    if (!hasGsap) {
+      layers.forEach((l) => { l.userData.t = 1; });
+      cityState.t = 1;
+      Object.assign(cam, toPose(POSE[4]));
+    } else if (reduce) {
+      layers.forEach((l) => { l.userData.t = 1; });
+      document.querySelectorAll('.scene-s').forEach((el, k) => {
+        ScrollTrigger.create({
+          trigger: el, start: 'top 55%', end: 'bottom 45%',
+          onToggle: (self) => { if (self.isActive) { Object.assign(cam, toPose(POSE[k])); cityState.t = k >= 3 ? 1 : 0; } }
+        });
+      });
+    } else {
+      const tl = gsap.timeline({ scrollTrigger: { trigger: '#page', start: 'top top', end: 'bottom bottom', scrub: 0.6 } });
+      [1, 2, 3, 4].forEach((k) => tl.to(cam, { ...toPose(POSE[k]), duration: 1, ease: 'power1.inOut' }, k));
+      tl.to(layers[0].userData, { t: 1, duration: 0.7, ease: 'power3.in' }, 1.2);
+      tl.to(layers[1].userData, { t: 1, duration: 0.6, ease: 'power3.in' }, 2.2);
+      tl.to(layers[2].userData, { t: 1, duration: 0.6, ease: 'power3.in' }, 2.35);
+      tl.to(cityState, { t: 1, duration: 0.6 }, 2.7);
+      tl.to(layers.slice(3).map((l) => l.userData), { t: 1, duration: 0.4, stagger: 0.03, ease: 'power3.in' }, 4.1);
+      tl.to(cam, { orbit: small ? 0 : 1, duration: 0.4 }, 4.6);
+    }
+
+    /* camera placement: scripted pose plus drag and auto-orbit offsets */
+    const place = () => {
+      const dx = cam.px - cam.lx, dz = cam.pz - cam.lz;
+      const a = cam.drag + cam.spin, c = Math.cos(a), s = Math.sin(a);
+      camera.position.set(cam.lx + dx * c - dz * s, cam.py, cam.lz + dx * s + dz * c);
+      camera.lookAt(cam.lx, cam.ly, cam.lz);
+    };
+    const resize = () => {
+      const w = innerWidth, h = innerHeight;
+      renderer.setSize(w, h, false);
+      camera.aspect = w / h;
+      if (w >= 900) camera.setViewOffset(w, h, -w * 0.2, 0, w, h); else camera.clearViewOffset();
+      camera.updateProjectionMatrix();
+    };
+    addEventListener('resize', resize);
+    resize();
+
+    /* picking, hover and clicks */
+    const ray = new THREE.Raycaster();
+    const ndc = new THREE.Vector2();
+    const tip = $('#tip');
+    const setHover = (h) => {
+      if (same(hoverRef.h, h)) return;
+      if (hoverRef.h) paint(hoverRef.h.mesh, hoverRef.h.id, hoverRef.h.mesh.userData.base[hoverRef.h.id]);
+      hoverRef.h = h;
+      if (h) paint(h.mesh, h.id, ACCENT);
+    };
+    const pick = (e) => {
+      const r = canvas.getBoundingClientRect();
+      ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+      ray.setFromCamera(ndc, camera);
+      const targets = layers.filter((l) => l.visible);
+      if (cityGroup.visible) targets.push(cityMesh);
+      const hit = ray.intersectObjects(targets, false)[0];
+      return hit && hit.instanceId !== undefined ? { mesh: hit.object, id: hit.instanceId } : null;
+    };
+    const showTip = (h, e) => {
+      const d = h.mesh.userData;
+      tip.textContent = `Block ${String(d.serial[h.id]).padStart(4, '0')} · ${BLOCKS[d.mats[h.id]].name}`;
+      tip.style.left = Math.min(e.clientX + 14, innerWidth - 200) + 'px';
+      tip.style.top = (e.clientY + 14) + 'px';
+      tip.hidden = false;
+    };
+
+    let dragging = false, lastX = 0, travel = 0;
+    canvas.addEventListener('pointerdown', (e) => { dragging = true; lastX = e.clientX; travel = 0; });
+    canvas.addEventListener('pointermove', (e) => {
+      if (dragging) {
+        const dx = e.clientX - lastX;
+        lastX = e.clientX;
+        travel += Math.abs(dx);
+        cam.drag += dx * 0.006;
+      }
+      const h = dragging && travel > 6 ? null : pick(e);
+      setHover(h);
+      if (h) showTip(h, e); else tip.hidden = true;
+    });
+    canvas.addEventListener('pointerup', (e) => {
+      if (!dragging) return;
+      dragging = false;
+      if (travel > 6) return;
+      const h = pick(e);
+      if (h && BLOCKS[h.mesh.userData.mats[h.id]].name === 'Glass') {
+        frozenUntil = performance.now() + 900;
+        if (hasGsap && !reduce) gsap.to(cam, { drag: cam.drag + Math.PI / 2, duration: 0.9, ease: 'power2.inOut' });
+        else cam.drag += Math.PI / 2;
+        toast('Saved.');
+      }
+    });
+    canvas.addEventListener('pointercancel', () => { dragging = false; });
+    canvas.addEventListener('pointerleave', () => { dragging = false; setHover(null); tip.hidden = true; });
+
+    /* shared city: random neighbour blocks light up */
+    const flashes = [];
+    const flashCity = (now) => {
+      const id = Math.floor(Math.random() * cityMesh.count);
+      paint(cityMesh, id, ACCENT);
+      flashes.push({ mesh: cityMesh, id, until: now + 900 });
+    };
+
+    let last = performance.now();
+    const frame = (now) => {
+      const dt = Math.min(0.05, (now - last) / 1000);
+      last = now;
+      if (now > frozenUntil) cam.spin += dt * 0.14 * cam.orbit;
+      ownEdges.material.opacity = reduce ? 1 : (Math.floor(now / 500) % 2 ? 1 : 0.2);
+      for (const l of layers) {
+        const t = l.userData.t;
+        l.visible = t > 0.01;
+        l.position.y = (1 - t) * 18;
+      }
+      cityGroup.visible = cityState.t > 0.01;
+      if (cityGroup.visible && !reduce && Math.random() < 0.05) flashCity(now);
+      for (let i = flashes.length - 1; i >= 0; i--) {
+        const f = flashes[i];
+        if (now > f.until) {
+          flashes.splice(i, 1);
+          if (!same(hoverRef.h, f)) paint(f.mesh, f.id, f.mesh.userData.base[f.id]);
+        }
+      }
+      place();
+      renderer.render(scene, camera);
+      requestAnimationFrame(frame);
+    };
+    place();
+    document.documentElement.classList.add('webgl');
+    requestAnimationFrame(frame);
+  }
+
+  try { init3D(); } catch (err) { document.documentElement.classList.remove('webgl'); }
+})();
+</script>
+</body>
+</html>

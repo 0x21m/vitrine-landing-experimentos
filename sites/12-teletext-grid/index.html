@@ -1,0 +1,717 @@
+<!doctype html>
+<html lang="en" data-build="preview">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sintonia Vazia — Teletext for one page a day</title>
+<meta name="description" content="Sintonia Vazia is a teletext channel with one useful page a day: an hour, a sentence, a number.">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=VT323&display=swap">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.15.1/gsap.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.15.1/ScrollTrigger.min.js"></script>
+<style>
+:root {
+  --black: #000000;
+  --blue: #0000AA;
+  --text: #F2F2F2;
+  --yellow: #FFD400;
+  --green: #00E070;
+  --grey: #A6A6A6;
+  --cols: 40;
+  --gl: max(16px, env(safe-area-inset-left, 0px));
+  --gr: max(16px, env(safe-area-inset-right, 0px));
+  --font-pixel: "VT323", ui-monospace, "Courier New", monospace;
+  --font-mono: "IBM Plex Mono", ui-monospace, "Courier New", monospace;
+  color-scheme: dark;
+}
+@media (max-width: 639px) {
+  :root { --cols: 24; }
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html {
+  background: var(--black);
+  -webkit-text-size-adjust: 100%;
+  scroll-snap-type: y proximity;
+  scroll-padding-top: 44px;
+}
+body {
+  margin: 0;
+  background: var(--black);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 16px;
+  line-height: 1.5;
+  padding-left: var(--gl);
+  padding-right: var(--gr);
+  padding-bottom: 24px;
+  overflow-wrap: break-word;
+}
+@media (min-width: 900px) { body { font-size: 17px; } }
+
+:focus-visible { outline: 3px solid var(--green); outline-offset: 2px; }
+
+/* Top bar */
+.bar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  background: var(--blue);
+  color: var(--text);
+  font-family: var(--font-pixel);
+  font-size: 24px;
+  line-height: 1;
+  padding: 8px var(--gr) 8px var(--gl);
+  margin: 0 calc(-1 * var(--gr)) 0 calc(-1 * var(--gl));
+}
+.bar .pn { color: var(--yellow); }
+.live { display: inline-flex; align-items: center; color: var(--green); }
+.live i {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 8px;
+  background: var(--green);
+  animation: blink 1.2s steps(2) infinite;
+}
+@keyframes blink { to { visibility: hidden; } }
+
+/* CRT flip overlay (GSAP, a single dry frame) */
+.cut {
+  position: fixed;
+  inset: 0;
+  background: var(--text);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 50;
+}
+
+/* Page grid: 40 x 24 cell unit (24 columns under 640px) */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
+  background-image: linear-gradient(to right, rgba(242, 242, 242, 0.06) 1px, transparent 1px);
+  background-size: calc(100% / var(--cols)) 100%;
+}
+.grid > * { grid-column: 1 / -1; min-width: 0; }
+@media (min-width: 900px) {
+  .grid > .mid { grid-column: 4 / 38; }
+}
+
+.page {
+  position: relative;
+  padding: 40px 0 64px;
+  scroll-snap-align: start;
+}
+.page > .grid { row-gap: 16px; }
+
+.ph {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 0 0 16px;
+  padding: 6px 14px;
+  background: var(--blue);
+  color: var(--text);
+  font-family: var(--font-pixel);
+  font-weight: 400;
+  font-size: clamp(30px, 4.5vw, 46px);
+  line-height: 1;
+}
+.ph .pnum { color: var(--yellow); }
+
+.block {
+  background: var(--blue);
+  padding: 16px 18px;
+}
+.lead {
+  font-size: clamp(18px, 2.4vw, 22px);
+  line-height: 1.4;
+  margin: 0 0 12px;
+}
+.muted { color: var(--grey); margin: 0; }
+p { margin: 0 0 12px; }
+p:last-child { margin-bottom: 0; }
+
+/* Hero */
+.hero {
+  min-height: 100dvh;
+  padding: 24px 0 48px;
+  overflow: hidden;
+  background: var(--blue) repeating-linear-gradient(to bottom, transparent 0 3px, rgba(0, 0, 0, 0.35) 3px 4px);
+}
+.js .hero { background: var(--black); }
+.noise {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  display: none;
+  image-rendering: pixelated;
+}
+.js .noise { display: block; }
+.hero-inner {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 18px;
+}
+.hero-inner::after {
+  content: "";
+  position: absolute;
+  inset: -24px -40vw;
+  pointer-events: none;
+  background: repeating-linear-gradient(to bottom, rgba(0, 0, 0, 0.18) 0 1px, transparent 1px 3px);
+  z-index: -1;
+}
+.title {
+  margin: 0;
+  font-family: var(--font-pixel);
+  font-weight: 400;
+  font-size: clamp(44px, 13vw, 170px);
+  line-height: 0.95;
+  color: var(--yellow);
+}
+.title-block {
+  display: inline-block;
+  background: var(--blue);
+  padding: 0 14px;
+}
+.hero-copy { font-family: var(--font-pixel); line-height: 1; }
+.hero-copy p {
+  margin: 0;
+  font-size: clamp(32px, 6vw, 72px);
+}
+.hero-copy .y { color: var(--yellow); }
+.hero-copy .g { color: var(--grey); }
+.hero-cta { display: flex; flex-wrap: wrap; gap: 12px; }
+
+.btn {
+  display: inline-block;
+  font-family: var(--font-pixel);
+  font-size: 28px;
+  line-height: 1;
+  padding: 10px 16px;
+  border: 0;
+  border-radius: 0;
+  background: var(--yellow);
+  color: var(--black);
+  text-decoration: none;
+  cursor: pointer;
+}
+.btn-ghost {
+  background: transparent;
+  color: var(--text);
+  box-shadow: inset 0 0 0 2px var(--text);
+}
+
+/* Dial (JS only; no-JS users get the page links below) */
+.dial-wrap { display: none; }
+.js .dial-wrap { display: block; }
+.dial {
+  position: relative;
+  height: 84px;
+  background: var(--blue);
+  box-shadow: inset 0 0 0 2px var(--text);
+  cursor: ew-resize;
+  touch-action: none;
+  user-select: none;
+}
+.needle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 3px;
+  background: var(--yellow);
+  transform: translateX(-50%);
+}
+.dial.locked .needle { background: var(--green); }
+.scale {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 6px;
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-pixel);
+  font-size: 22px;
+  line-height: 1;
+  color: var(--text);
+  pointer-events: none;
+}
+.readout {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  align-items: baseline;
+  margin-top: 12px;
+  font-family: var(--font-pixel);
+  font-size: 28px;
+  line-height: 1;
+}
+.readout .sig { color: var(--text); }
+.readout .sig.ok { color: var(--green); }
+
+.pagenav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  list-style: none;
+  margin: 16px 0 0;
+  padding: 0;
+}
+.pagenav a {
+  display: inline-block;
+  padding: 4px 10px;
+  background: var(--blue);
+  color: var(--yellow);
+  font-family: var(--font-pixel);
+  font-size: 26px;
+  line-height: 1;
+  text-decoration: none;
+}
+.pagenav a:hover { background: var(--yellow); color: var(--black); }
+
+/* P200 / P300 */
+.clock {
+  display: block;
+  font-family: var(--font-pixel);
+  font-size: clamp(64px, 14vw, 140px);
+  line-height: 1;
+  color: var(--yellow);
+}
+.count {
+  font-family: var(--font-pixel);
+  font-size: 40px;
+  line-height: 1;
+  color: var(--yellow);
+}
+
+/* P400 offer */
+.offer {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  background: var(--blue);
+}
+.offer li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 16px;
+  padding: 12px 18px;
+  box-shadow: inset 0 -1px 0 rgba(242, 242, 242, 0.25);
+}
+.offer li > span:first-child { min-width: 0; }
+.offer .price { color: var(--yellow); font-weight: 500; }
+.offer li:focus-visible {
+  outline: none;
+  background: var(--text);
+  color: var(--black);
+}
+.offer li:focus-visible .price { color: var(--black); }
+
+/* P500 form */
+.sub label {
+  display: block;
+  margin-bottom: 8px;
+  font-family: var(--font-pixel);
+  font-size: 28px;
+  line-height: 1;
+  color: var(--yellow);
+}
+.sub input {
+  display: block;
+  width: 100%;
+  max-width: 520px;
+  padding: 12px;
+  margin-bottom: 14px;
+  font: inherit;
+  font-size: 18px;
+  color: var(--text);
+  background: var(--black);
+  border: 2px solid var(--text);
+  border-radius: 0;
+}
+.sub input:focus { border-color: var(--yellow); outline: none; }
+.sub input:focus-visible { outline: 3px solid var(--green); outline-offset: 2px; }
+.msg {
+  min-height: 1.5em;
+  margin: 14px 0 0;
+  font-family: var(--font-pixel);
+  font-size: 26px;
+  line-height: 1;
+}
+.msg.ok { color: var(--green); }
+.msg.err { color: var(--yellow); }
+
+/* P600 footer */
+.foot-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-family: var(--font-pixel);
+  font-size: 26px;
+  line-height: 1;
+}
+.foot-links a { color: var(--yellow); }
+.notice {
+  margin: 28px 0 0;
+  font-family: var(--font-pixel);
+  font-size: 18px;
+  line-height: 1;
+  color: var(--grey);
+  text-align: right;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+  html { scroll-snap-type: none; }
+}
+</style>
+</head>
+<body>
+
+<header class="bar">
+  <span>SINTONIA VAZIA</span>
+  <span class="pn" id="pn">P100</span>
+  <span class="live"><i aria-hidden="true"></i>LIVE</span>
+</header>
+
+<div class="cut" id="cut" aria-hidden="true"></div>
+
+<main>
+
+  <section class="page hero" id="p100" data-page="P100" aria-labelledby="t100">
+    <canvas id="noise" class="noise" aria-hidden="true"></canvas>
+    <div class="hero-inner">
+      <h1 id="t100" class="title"><span class="title-block">Sintonia Vazia</span></h1>
+
+      <div class="hero-copy">
+        <p class="y">Nothing is on.</p>
+        <p>Tune in anyway.</p>
+        <p class="g">One quiet page, every day.</p>
+      </div>
+
+      <div class="dial-wrap">
+        <div id="dial" class="dial" role="slider" tabindex="0"
+             aria-label="Channel dial, 88 to 108 megahertz"
+             aria-valuemin="88" aria-valuemax="108" aria-valuenow="88.0"
+             aria-valuetext="88.0 MHz, no signal">
+          <div class="scale" aria-hidden="true">
+            <span>88</span><span>90</span><span>92</span><span>94</span><span>96</span><span>98</span><span>100</span><span>102</span><span>104</span><span>106</span><span>108</span>
+          </div>
+          <div id="needle" class="needle" aria-hidden="true"></div>
+        </div>
+        <p class="readout">
+          <span id="readout">88.0 MHz</span>
+          <span id="signal" class="sig" aria-live="polite">NO SIGNAL</span>
+        </p>
+      </div>
+
+      <div class="hero-cta">
+        <a class="btn" href="#p400">See the offer</a>
+        <a class="btn btn-ghost" href="#p500">Tune in</a>
+      </div>
+
+      <nav aria-label="Pages">
+        <ul class="pagenav">
+          <li><a href="#p100">P100</a></li>
+          <li><a href="#p200">P200</a></li>
+          <li><a href="#p300">P300</a></li>
+          <li><a href="#p400">P400</a></li>
+          <li><a href="#p500">P500</a></li>
+          <li><a href="#p600">P600</a></li>
+        </ul>
+      </nav>
+    </div>
+  </section>
+
+  <section class="page" id="p200" data-page="P200" aria-labelledby="t200">
+    <div class="grid">
+      <h2 id="t200" class="ph mid"><span class="pnum">P200</span>What it is</h2>
+      <div class="block mid">
+        <p class="lead">Sintonia Vazia is a teletext channel with one useful page a day: an hour, a sentence, a number.</p>
+        <p class="muted">Nothing else arrives unless you ask for it. Every scroll turns the page. Nothing scrolls on forever.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="page" id="p300" data-page="P300" aria-labelledby="t300">
+    <div class="grid">
+      <h2 id="t300" class="ph mid"><span class="pnum">P300</span>Today's page</h2>
+      <div class="block mid">
+        <time id="clock" class="clock" datetime="00:00">00:00</time>
+        <p class="lead">The kettle is on. Nothing else needs you before lunch.</p>
+        <p class="count">0 <span class="muted" style="font-size:20px;font-family:var(--font-mono)">pages left today</span></p>
+      </div>
+    </div>
+  </section>
+
+  <section class="page" id="p400" data-page="P400" aria-labelledby="t400">
+    <div class="grid">
+      <h2 id="t400" class="ph mid"><span class="pnum">P400</span>The offer</h2>
+      <ul class="offer mid" role="list">
+        <li tabindex="0"><span>One daily page, one per day</span><span class="price">$6 / month</span></li>
+        <li tabindex="0"><span>Tuning room, an open static channel</span><span class="price">included</span></li>
+        <li tabindex="0"><span>An hour, one sentence, one number</span><span class="price">included</span></li>
+        <li tabindex="0"><span>Cancel on any day, no reason needed</span><span class="price">$0</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="page" id="p500" data-page="P500" aria-labelledby="t500">
+    <div class="grid">
+      <h2 id="t500" class="ph mid"><span class="pnum">P500</span>Subscribe</h2>
+      <div class="block mid">
+        <p class="lead">Email only. No card on this page.</p>
+        <form id="subscribe" class="sub" action="#p500" method="post">
+          <label for="email">Email address</label>
+          <input id="email" name="email" type="email" autocomplete="email" required placeholder="name@domain.com">
+          <button class="btn" type="submit">Tune in</button>
+          <p id="form-msg" class="msg" role="status" aria-live="polite"></p>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <section class="page" id="p600" data-page="P600" aria-labelledby="t600">
+    <div class="grid">
+      <h2 id="t600" class="ph mid"><span class="pnum">P600</span>Contact and terms</h2>
+      <div class="block mid">
+        <ul class="foot-links">
+          <li><a href="#">Contact</a></li>
+          <li><a href="#">Privacy</a></li>
+          <li><a href="#">Terms</a></li>
+        </ul>
+        <p class="muted" style="margin-top:16px">Sintonia Vazia is a subscription service: one page a day, nothing more. © 2026 Sintonia Vazia. All rights reserved.</p>
+        <p id="build-notice" class="notice">P600 · PREVIEW BUILD</p>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  'use strict';
+
+  var root = document.documentElement;
+  root.classList.add('js');
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var MIN = 88, MAX = 108, TARGET = 97.4, TOL = 0.25;
+  var $ = function (s) { return document.querySelector(s); };
+  var pad = function (n) { return (n < 10 ? '0' : '') + n; };
+
+  // Build flag: the page notice line is removed in production builds.
+  if (root.getAttribute('data-build') === 'production') {
+    var notice = $('#build-notice');
+    if (notice) notice.parentNode.removeChild(notice);
+  }
+
+  // P300 clock: updates by minute, nothing else moves.
+  var clock = $('#clock');
+  function tick() {
+    if (!clock) return;
+    var d = new Date(), t = pad(d.getHours()) + ':' + pad(d.getMinutes());
+    clock.textContent = t;
+    clock.setAttribute('datetime', t);
+  }
+  tick();
+  setInterval(tick, 15000);
+
+  // Dial and signal lock (P100)
+  var state = { f: MIN, noise: 1, clear: 0, locked: false };
+  var dial = $('#dial'), needle = $('#needle'), readout = $('#readout'), signal = $('#signal');
+
+  function show() {
+    if (!dial) return;
+    var pct = (state.f - MIN) / (MAX - MIN) * 100;
+    needle.style.left = pct + '%';
+    readout.textContent = state.f.toFixed(1) + ' MHz';
+    dial.setAttribute('aria-valuenow', state.f.toFixed(1));
+    dial.setAttribute('aria-valuetext', state.f.toFixed(1) + ' MHz, ' + (state.locked ? 'signal locked' : 'no signal'));
+  }
+
+  function lock() {
+    state.locked = true;
+    state.f = TARGET;
+    if (dial) dial.classList.add('locked');
+    if (signal) { signal.textContent = 'SIGNAL LOCKED'; signal.classList.add('ok'); }
+    if (window.gsap && !reduce) {
+      // Two stages: the snow dims, then the lines clear from top to bottom.
+      gsap.timeline()
+        .to(state, { noise: 0.35, duration: 0.5, ease: 'none' })
+        .to(state, { clear: 1, duration: 1.1, ease: 'steps(10)' })
+        .to(state, { noise: 0, duration: 0.15, ease: 'none' });
+    } else {
+      state.clear = 1;
+      state.noise = 0;
+    }
+  }
+
+  function setF(f) {
+    f = Math.max(MIN, Math.min(MAX, f));
+    state.f = f;
+    if (!state.locked) {
+      state.noise = Math.min(1, 0.2 + Math.abs(f - TARGET) / 8);
+      if (Math.abs(f - TARGET) <= TOL) lock();
+    }
+    show();
+  }
+
+  if (dial) {
+    var fromX = function (x) {
+      var r = dial.getBoundingClientRect();
+      return MIN + (x - r.left) / r.width * (MAX - MIN);
+    };
+    var dragging = false;
+    dial.addEventListener('pointerdown', function (e) {
+      dragging = true;
+      try { dial.setPointerCapture(e.pointerId); } catch (err) { /* capture is optional */ }
+      setF(fromX(e.clientX));
+    });
+    dial.addEventListener('pointermove', function (e) { if (dragging) setF(fromX(e.clientX)); });
+    dial.addEventListener('pointerup', function () { dragging = false; });
+    dial.addEventListener('pointercancel', function () { dragging = false; });
+    dial.addEventListener('keydown', function (e) {
+      var step = e.shiftKey ? 1 : 0.2;
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') setF(state.f - step);
+      else if (e.key === 'ArrowRight' || e.key === 'ArrowUp') setF(state.f + step);
+      else if (e.key === 'Home') setF(MIN);
+      else if (e.key === 'End') setF(MAX);
+      else return;
+      e.preventDefault();
+    });
+    // Reduced motion: the dial settles on its own, straight to the final state.
+    setF(reduce ? TARGET : MIN);
+  }
+
+  // Noise canvas (P100 background). Half resolution, 24 fps (15 fps and quarter resolution on phones).
+  var canvas = $('#noise');
+  if (canvas && canvas.getContext) {
+    var ctx = canvas.getContext('2d');
+    var img = null, buf = null, raf = 0, last = 0, heroVisible = true, lastFinal = false;
+    var interval = 1000 / 24;
+
+    var size = function () {
+      var phone = window.innerWidth < 640;
+      var s = phone ? 0.25 : 0.5;
+      interval = 1000 / (phone ? 15 : 24);
+      var r = canvas.getBoundingClientRect();
+      canvas.width = Math.max(1, Math.round(r.width * s));
+      canvas.height = Math.max(1, Math.round(r.height * s));
+      img = ctx.createImageData(canvas.width, canvas.height);
+      buf = new Uint32Array(img.data.buffer);
+      draw();
+    };
+
+    var draw = function () {
+      var w = canvas.width, h = canvas.height;
+      var cut = Math.floor(state.clear * h), n = state.noise;
+      for (var y = 0; y < h; y++) {
+        var row = y * w;
+        if (y < cut || n <= 0.01) {
+          for (var x = 0; x < w; x++) buf[row + x] = 0xff000000;
+        } else {
+          for (var i = 0; i < w; i++) {
+            var v = (Math.random() * 255 * n) | 0;
+            buf[row + i] = 0xff000000 | (v << 16) | (v << 8) | v;
+          }
+        }
+      }
+      ctx.putImageData(img, 0, 0);
+    };
+
+    var running = function () {
+      return heroVisible && !document.hidden && !reduce;
+    };
+
+    var frame = function (t) {
+      raf = 0;
+      if (!running()) return;
+      if (t - last >= interval) {
+        last = t;
+        var settled = state.clear >= 1 && state.noise <= 0.01;
+        if (!settled || !lastFinal) {
+          draw();
+          lastFinal = settled;
+        }
+      }
+      raf = requestAnimationFrame(frame);
+    };
+
+    var start = function () {
+      if (!raf && running()) raf = requestAnimationFrame(frame);
+    };
+
+    var resizeTimer = 0;
+    window.addEventListener('resize', function () {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(size, 150);
+    });
+    window.addEventListener('orientationchange', size);
+    document.addEventListener('visibilitychange', start);
+
+    if ('IntersectionObserver' in window) {
+      var heroIO = new IntersectionObserver(function (entries) {
+        heroVisible = entries[0].isIntersecting;
+        start();
+      });
+      heroIO.observe($('#p100'));
+    }
+
+    size();
+    if (reduce) draw(); else start();
+  }
+
+  // Current page number in the top bar
+  var pn = $('#pn');
+  var pages = document.querySelectorAll('.page');
+  if (pn && 'IntersectionObserver' in window) {
+    var pageIO = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        if (en.isIntersecting) pn.textContent = en.target.getAttribute('data-page');
+      });
+    }, { rootMargin: '-45% 0px -45% 0px' });
+    Array.prototype.forEach.call(pages, function (p) { pageIO.observe(p); });
+  }
+
+  // GSAP ScrollTrigger: each page turn is a single dry frame of noise. Off when reduced motion is on.
+  var cut = $('#cut');
+  function flip() {
+    if (cut) gsap.fromTo(cut, { opacity: 0.16 }, { opacity: 0, duration: 0.1, ease: 'steps(2)' });
+  }
+  if (window.gsap && window.ScrollTrigger && !reduce) {
+    gsap.registerPlugin(ScrollTrigger);
+    Array.prototype.forEach.call(pages, function (p, i) {
+      if (i === 0) return;
+      ScrollTrigger.create({ trigger: p, start: 'top 55%', onEnter: flip, onEnterBack: flip });
+    });
+  }
+
+  // Subscribe form: client-side confirmation only, no endpoint is wired up.
+  var form = $('#subscribe'), msg = $('#form-msg');
+  if (form && msg) {
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      msg.className = 'msg ok';
+      msg.textContent = 'Signal confirmed. You are tuned in.';
+    });
+  }
+});
+</script>
+</body>
+</html>

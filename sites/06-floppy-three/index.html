@@ -1,0 +1,509 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sectorwrit — Hand-written messages on 3.5-inch disk</title>
+<meta name="description" content="Sectorwrit writes one message by hand onto a 3.5-inch disk, seals it, numbers it and posts it in five business days.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap" rel="stylesheet">
+<script defer src="https://cdn.jsdelivr.net/npm/gsap@3.15.1/dist/gsap.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/gsap@3.15.1/dist/ScrollTrigger.min.js"></script>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.187.0/build/three.module.min.js"}}</script>
+<style>
+:root{
+  --bg:#E6DFCF;
+  --paper:#F4F0E4;
+  --ink:#1C1D1F;
+  --accent:#2446B8;
+  --alert:#B3261E;
+  --mono:"IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --serif:"Newsreader", Georgia, "Times New Roman", serif;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%;background:var(--bg)}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--ink);
+  font-family:var(--mono);
+  font-size:15px;
+  line-height:1.6;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));
+  padding-right:max(16px, env(safe-area-inset-right, 0px));
+  padding-bottom:max(24px, env(safe-area-inset-bottom, 0px));
+  -webkit-font-smoothing:antialiased;
+}
+main{max-width:1180px;margin:0 auto;overflow-x:clip}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+h1,h2,h3{font-family:var(--serif);font-weight:500;margin:0}
+p{margin:0}
+
+/* top bar */
+.topbar{position:fixed;top:0;left:0;right:0;z-index:20;background:var(--bg);border-bottom:1px solid rgba(28,29,31,.14)}
+.topbar-in{
+  max-width:1180px;margin:0 auto;height:56px;display:flex;align-items:center;justify-content:space-between;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));
+  padding-right:max(16px, env(safe-area-inset-right, 0px));
+}
+.brand{font-weight:600;font-size:13px;letter-spacing:.16em;text-decoration:none}
+.nav{display:flex;gap:22px;font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+.nav a{text-decoration:none}
+@media (max-width:640px){.nav{display:none}}
+
+/* scene stage (3D disk, or its SVG fallback) */
+.stage{
+  position:relative;margin-top:56px;height:min(72vh,600px);min-height:340px;
+  background:var(--bg);overflow:hidden;
+}
+.stage canvas{position:absolute;inset:0;width:100%;height:100%;display:none}
+.gl .stage canvas{display:block}
+.disk-fallback{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(60vw,300px);height:auto}
+.gl .disk-fallback{display:none}
+.stage.tremor{animation:tremor .2s linear}
+@keyframes tremor{
+  0%{transform:translate(0,0)}
+  25%{transform:translate(-2px,0)}
+  50%{transform:translate(2px,0)}
+  75%{transform:translate(-1px,0)}
+  100%{transform:translate(0,0)}
+}
+
+/* sections */
+.hero,.shutter,.message{
+  position:relative;z-index:1;display:flex;flex-direction:column;justify-content:center;
+  padding-top:48px;padding-bottom:48px;
+}
+.copy{max-width:30rem}
+.kicker{font-size:12px;letter-spacing:.14em;text-transform:uppercase;margin:0 0 22px}
+h1{font-size:clamp(2.2rem,5.2vw,4.25rem);line-height:1.04;letter-spacing:-.015em;margin-bottom:22px;max-width:16ch}
+h2{font-size:clamp(1.8rem,3.6vw,2.7rem);line-height:1.1;margin-bottom:18px}
+.hero .line{font-size:clamp(14px,1.5vw,16px);margin-bottom:8px}
+.actions{margin-top:28px;display:flex;flex-wrap:wrap;gap:16px 22px;align-items:center}
+.hint{font-size:12px;letter-spacing:.1em;text-transform:uppercase}
+.btn{
+  display:inline-flex;align-items:center;min-height:44px;padding:12px 22px;
+  background:var(--accent);color:var(--paper);text-decoration:none;
+  font-family:var(--mono);font-size:14px;font-weight:500;letter-spacing:.04em;border-radius:2px;
+  box-shadow:0 2px 0 #142a78;
+}
+.shutter p,.order p{max-width:36ch;margin-bottom:14px}
+.wp{
+  display:inline-block;margin-top:14px;padding:8px 12px;
+  border:1.5px solid rgba(28,29,31,.5);font-size:13px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;
+}
+.wp.is-open{color:var(--alert);border-color:var(--alert)}
+
+/* the message sheet */
+.sheet{
+  position:relative;max-width:32rem;background:var(--paper);
+  border:1px solid rgba(28,29,31,.2);padding:20px 24px 26px 52px;
+}
+.sheet::before{
+  content:"";position:absolute;left:30px;top:0;bottom:0;border-left:2px dotted rgba(28,29,31,.22);
+}
+.sheet-head{
+  font-size:12px;line-height:32px;letter-spacing:.06em;text-transform:uppercase;
+  border-bottom:2px solid var(--ink);margin-bottom:4px;
+}
+.msg-line{
+  font-family:var(--serif);font-size:19px;line-height:32px;
+  border-bottom:1px solid rgba(36,70,184,.22);
+}
+.cursor{
+  display:inline-block;width:.55em;height:1em;margin-left:3px;vertical-align:-.15em;background:var(--ink);
+  animation:blink 1s steps(2,start) infinite;
+}
+@keyframes blink{0%{opacity:1}50%{opacity:0}100%{opacity:1}}
+
+/* clerk */
+.clerk{padding:112px 0 64px}
+.label{font-size:12px;letter-spacing:.14em;text-transform:uppercase;margin-bottom:14px}
+.clerk-grid{display:grid;gap:16px;grid-template-columns:1fr;margin-top:32px}
+@media (min-width:860px){.clerk-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.clerk-card{background:var(--paper);border:1px solid rgba(28,29,31,.2);padding:24px 22px 26px}
+.clerk-card .num{font-size:12px;letter-spacing:.12em;color:var(--accent)}
+.clerk-card h3{font-size:24px;line-height:1.2;margin:10px 0}
+.clerk-card p:last-child{font-size:14px}
+
+/* order */
+.order{
+  padding:96px 0 72px;border-top:1px solid rgba(28,29,31,.2);
+  display:grid;gap:28px;
+}
+@media (min-width:860px){.order{grid-template-columns:1.1fr .9fr;align-items:end}}
+
+/* footer */
+.foot{
+  max-width:1180px;margin:0 auto;padding:28px 0 0;border-top:1px solid rgba(28,29,31,.2);
+  display:flex;flex-wrap:wrap;gap:10px 24px;justify-content:space-between;font-size:13px;
+}
+.template-note{width:100%;font-size:11px;opacity:.6}
+
+/* scroll-driven layout: the stage stays on screen while the sections scroll over it */
+.scroll-fx .stage{position:sticky;top:0;height:100vh;height:100dvh;min-height:0;margin-top:0;z-index:0}
+.scroll-fx .hero{margin-top:-100vh;margin-top:-100dvh;min-height:100vh;min-height:100dvh;padding-top:96px}
+.scroll-fx .shutter,.scroll-fx .message{min-height:100vh;min-height:100dvh}
+.tail{display:none}
+.scroll-fx .tail{display:block;height:110vh;height:110dvh}
+@media (max-width:767px){
+  .scroll-fx .hero,.scroll-fx .shutter,.scroll-fx .message{justify-content:flex-end;padding-bottom:36px}
+}
+
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-in">
+    <a class="brand" href="#top">SECTORWRIT</a>
+    <nav class="nav" aria-label="Sections">
+      <a href="#shutter">Shutter</a>
+      <a href="#message">Message</a>
+      <a href="#clerk">Clerk</a>
+      <a href="#contact">Order</a>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+  <div class="runway">
+    <div class="stage" id="stage">
+      <canvas id="disk" aria-hidden="true"></canvas>
+      <svg class="disk-fallback" viewBox="0 0 400 400" role="img" aria-label="A black 3.5-inch disk with its metal shutter open and a blue label">
+        <ellipse cx="200" cy="356" rx="132" ry="10" fill="rgba(28,29,31,.18)"/>
+        <rect x="90" y="40" width="240" height="300" rx="12" fill="#1C1D1F"/>
+        <rect x="150" y="60" width="100" height="84" fill="#2b2e35"/>
+        <rect x="256" y="58" width="58" height="88" rx="2" fill="#C9CDD2"/>
+        <rect x="120" y="170" width="160" height="92" fill="#2446B8"/>
+        <text x="200" y="205" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="15" font-weight="600" fill="#F4F0E4" letter-spacing="2">SECTORWRIT</text>
+        <text x="200" y="233" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" fill="#F4F0E4">1 MESSAGE · HAND-WRITTEN</text>
+        <rect x="140" y="300" width="120" height="12" rx="1" fill="#050505"/>
+        <rect x="140" y="312" width="120" height="16" rx="2" fill="#C9CDD2"/>
+      </svg>
+    </div>
+
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="copy">
+        <p class="kicker">Hand-written messages, on disk</p>
+        <h1 id="hero-title">The one thing you can't say out loud.</h1>
+        <p class="line">We write it by hand onto a 3.5-inch disk.</p>
+        <p class="line">Sealed, numbered, posted in five business days.</p>
+        <div class="actions">
+          <a class="btn" href="#contact">Write yours</a>
+          <span class="hint">Scroll to open the disk</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="shutter" id="shutter" aria-labelledby="shutter-title">
+      <div class="copy">
+        <h2 id="shutter-title">Closed until it is time.</h2>
+        <p>Every disk keeps its message behind a metal shutter. The magnetic surface stays covered until the disk is ready to be read.</p>
+        <p class="wp is-open" id="wp-label">WRITE PROTECT OFF</p>
+      </div>
+    </section>
+
+    <section class="message" id="message" aria-labelledby="message-title">
+      <div class="copy">
+        <h2 id="message-title">One message, one sheet.</h2>
+        <article class="sheet">
+          <p class="sheet-head">A:\&gt; TYPE MESSAGE.TXT</p>
+          <p class="msg-line">Dear reader,</p>
+          <p class="msg-line">The kettle still works, and the kitchen window still sticks when it rains.</p>
+          <p class="msg-line">I have been meaning to write this down for a long time. Every time I tried it out loud, the words went somewhere else.</p>
+          <p class="msg-line">So here it is, plainly, with nothing left out.</p>
+          <p class="msg-line">You do not have to answer straight away.</p>
+          <p class="msg-line">Yours,</p>
+          <p class="msg-line">— <span class="cursor" aria-hidden="true"></span></p>
+        </article>
+      </div>
+    </section>
+    <div class="tail" aria-hidden="true"></div>
+  </div>
+
+  <section class="clerk" id="clerk" aria-labelledby="clerk-title">
+    <p class="label">Who writes it</p>
+    <h2 id="clerk-title">A person writes every word.</h2>
+    <div class="clerk-grid">
+      <article class="clerk-card">
+        <p class="num">01</p>
+        <h3>Read it once</h3>
+        <p>The clerk reads your message through once, without comment, and checks that it fits on one disk.</p>
+      </article>
+      <article class="clerk-card">
+        <p class="num">02</p>
+        <h3>Write it by hand</h3>
+        <p>Each line is written out by hand first, then transferred to the disk, and checked against the paper.</p>
+      </article>
+      <article class="clerk-card">
+        <p class="num">03</p>
+        <h3>Seal and post</h3>
+        <p>The disk goes into a numbered envelope with a postmark and a receipt. Then it goes in the post.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="order" id="contact" aria-labelledby="order-title">
+    <div>
+      <p class="label">Order</p>
+      <h2 id="order-title">One message, one disk, five business days.</h2>
+      <p>Each order is one message on one 3.5-inch disk: plain text up to 1.44 MB, about 700,000 characters. It is written by hand, sealed, numbered and posted with a receipt.</p>
+    </div>
+    <div>
+      <p>Priced per disk. The total and the postage are shown before the first line is written.</p>
+      <p><a class="btn" href="#contact">Write yours</a></p>
+    </div>
+  </section>
+</main>
+
+<footer class="foot">
+  <p class="brand">SECTORWRIT</p>
+  <p>Hand-written messages, sealed on 3.5-inch disk.</p>
+  <p class="template-note">Template. Brand and copy are placeholders.</p>
+</footer>
+
+<script type="module">
+import * as THREE from 'three';
+
+const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const COARSE = matchMedia('(pointer: coarse)').matches;
+const root = document.documentElement;
+const canvas = document.getElementById('disk');
+const stage = document.getElementById('stage');
+const wpLabel = document.getElementById('wp-label');
+
+// Written only by the GSAP timeline (scroll) or set once (static); read by the render loop.
+const state = { shutter: 0, lid: 0, sheet: 0 };
+const pointer = { x: 0, y: 0 };
+const tilt = { x: 0, y: 0 };
+let motion = false;
+let fx = false;
+let prevShutter = 0;
+let lastOpen = null;
+
+function roundedRect(w, h, r) {
+  const x = -w / 2, y = -h / 2, s = new THREE.Shape();
+  s.moveTo(x + r, y);
+  s.lineTo(x + w - r, y); s.quadraticCurveTo(x + w, y, x + w, y + r);
+  s.lineTo(x + w, y + h - r); s.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  s.lineTo(x + r, y + h); s.quadraticCurveTo(x, y + h, x, y + h - r);
+  s.lineTo(x, y + r); s.quadraticCurveTo(x, y, x + r, y);
+  return s;
+}
+
+async function makeLabelTexture() {
+  const c = document.createElement('canvas');
+  c.width = 1024; c.height = 512;
+  const g = c.getContext('2d');
+  try { await document.fonts.load('600 64px "IBM Plex Mono"'); } catch (e) { /* fallback font */ }
+  g.fillStyle = '#2446B8'; g.fillRect(0, 0, 1024, 512);
+  g.fillStyle = '#F4F0E4'; g.fillRect(48, 56, 928, 400);
+  g.fillStyle = '#2446B8'; g.font = '600 92px "IBM Plex Mono", monospace'; g.textAlign = 'center';
+  g.fillText('SECTORWRIT', 512, 170);
+  g.fillRect(120, 200, 784, 4);
+  g.fillStyle = '#1C1D1F'; g.font = '500 44px "IBM Plex Mono", monospace';
+  g.fillText('1 MESSAGE  ·  HAND-WRITTEN', 512, 290);
+  g.font = '500 38px "IBM Plex Mono", monospace';
+  g.fillText('NO. 0417   ·   DS / HD   3.5 IN', 512, 368);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+
+function makePaperTexture() {
+  const c = document.createElement('canvas');
+  c.width = 512; c.height = 663;
+  const g = c.getContext('2d');
+  g.fillStyle = '#F4F0E4'; g.fillRect(0, 0, 512, 663);
+  g.fillStyle = 'rgba(36,70,184,0.22)';
+  for (let y = 60; y < 663; y += 32) g.fillRect(0, y, 512, 2);
+  g.fillStyle = 'rgba(28,29,31,0.25)';
+  g.fillRect(70, 0, 2, 663);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+
+async function start() {
+  let renderer;
+  try {
+    renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+  } catch (err) {
+    return; // no WebGL: the SVG fallback stays
+  }
+  const mobile = innerWidth < 768 || COARSE;
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, mobile ? 1.5 : 2));
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 100);
+
+  if (!mobile) {
+    try {
+      const { RoomEnvironment } = await import('https://cdn.jsdelivr.net/npm/three@0.187.0/examples/jsm/environments/RoomEnvironment.js');
+      const pmrem = new THREE.PMREMGenerator(renderer);
+      scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+    } catch (err) { /* lights only */ }
+  }
+  scene.add(new THREE.HemisphereLight(0xffffff, 0xc9c0ad, mobile ? 1.2 : 0.6));
+  const key = new THREE.DirectionalLight(0xffffff, mobile ? 1.6 : 1.4);
+  key.position.set(3, 4, 6);
+  scene.add(key);
+
+  const W = 2.9, H = 3.0, T = 0.14, FZ = T / 2 + 0.012;
+  const disk = new THREE.Group();
+  scene.add(disk);
+
+  const plastic = new THREE.MeshStandardMaterial({ color: 0x1c1d1f, roughness: 0.34, metalness: 0 });
+  const metal = new THREE.MeshStandardMaterial({ color: 0xc9cdd2, roughness: 0.22, metalness: mobile ? 0.5 : 1 });
+  const slotMat = new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 0.9 });
+
+  // body: extruded rounded square
+  const bodyGeo = new THREE.ExtrudeGeometry(roundedRect(W, H, 0.12), {
+    depth: T - 0.02, bevelEnabled: true, bevelThickness: 0.01, bevelSize: 0.01, bevelSegments: 2, curveSegments: 6
+  });
+  bodyGeo.translate(0, 0, -(T - 0.02) / 2);
+  disk.add(new THREE.Mesh(bodyGeo, plastic));
+
+  // magnetic surface seen through the window: ShaderMaterial with concentric tracks
+  const winY = H / 2 - 0.47;
+  const windowMat = new THREE.ShaderMaterial({
+    vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+    fragmentShader: 'varying vec2 vUv; void main(){ vec2 p = (vUv - 0.5) * vec2(1.0, 1.25); float r = length(p); float ring = 0.5 + 0.5 * sin(r * 240.0); vec3 c = mix(vec3(0.05, 0.055, 0.065), vec3(0.15, 0.16, 0.18), ring * 0.55); gl_FragColor = vec4(c, 1.0); }'
+  });
+  const win = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 0.8), windowMat);
+  win.position.set(0, winY, FZ);
+  disk.add(win);
+
+  // metal shutter: slides right along the window
+  const shutter = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.9, 0.03), metal);
+  shutter.position.set(0, winY, FZ + 0.02);
+  disk.add(shutter);
+
+  // paper label
+  const label = new THREE.Mesh(
+    new THREE.PlaneGeometry(2.1, 1.0),
+    new THREE.MeshStandardMaterial({ map: await makeLabelTexture(), roughness: 0.7 })
+  );
+  label.position.set(0, -0.22, FZ + 0.002);
+  disk.add(label);
+
+  // slot and hinged metal lid at the bottom edge
+  const slot = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.1), slotMat);
+  slot.position.set(0, -1.2, FZ + 0.002);
+  disk.add(slot);
+  const lidPivot = new THREE.Group();
+  lidPivot.position.set(0, -H / 2 + 0.1, FZ);
+  const lid = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.72, 0.035), metal);
+  lid.position.set(0, 0.36, 0);
+  lidPivot.add(lid);
+  disk.add(lidPivot);
+
+  // form paper: geometry pivots on its bottom edge, so it unrolls out of the slot
+  const paperGeo = new THREE.PlaneGeometry(1.9, 2.46);
+  paperGeo.translate(0, 1.23, 0);
+  const paper = new THREE.Mesh(paperGeo, new THREE.MeshStandardMaterial({ map: makePaperTexture(), roughness: 0.9 }));
+  disk.add(paper);
+
+  function layout() {
+    const w = canvas.clientWidth || 1, h = canvas.clientHeight || 1;
+    const side = w >= 768 && w / h >= 1.1;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    camera.position.set(0, 0, side ? 9 : 12);
+    camera.updateProjectionMatrix();
+    disk.position.set(side ? 1.35 : 0, side ? 0 : 0.9, 0);
+    disk.scale.setScalar(side ? (w / h < 1.5 ? 0.85 : 1) : 0.85);
+  }
+
+  function render(t) {
+    const time = t * 0.001;
+    const heroK = motion ? Math.max(0, Math.min(1, 1 - scrollY / (innerHeight * 0.9))) : 0;
+    const ptr = motion && !COARSE;
+    tilt.x += ((ptr ? pointer.y * 0.18 : 0) * heroK - tilt.x) * 0.08;
+    tilt.y += ((ptr ? pointer.x * 0.28 : 0) * heroK - tilt.y) * 0.08;
+    disk.rotation.x = tilt.x;
+    disk.rotation.y = tilt.y + Math.sin(time * 0.35) * 0.45 * heroK;
+
+    shutter.position.x = state.shutter * 0.9;
+    lidPivot.rotation.x = state.lid * 1.92; // 110 degrees
+    const u = Math.min(1, state.sheet / 0.6);
+    const v = Math.max(0, Math.min(1, (state.sheet - 0.4) / 0.6));
+    paper.visible = state.sheet > 0;
+    paper.scale.y = Math.max(0.001, u);
+    paper.position.set(0.12 * v, -1.2, 0.55 * v);
+
+    key.position.x = 3 + (motion ? Math.sin(time * 0.45) * 3 : 0);
+
+    const open = state.shutter > 0.95;
+    if (open !== lastOpen) {
+      lastOpen = open;
+      wpLabel.textContent = open ? 'WRITE PROTECT OFF' : 'WRITE PROTECT ON';
+      wpLabel.classList.toggle('is-open', open);
+    }
+    if (fx && prevShutter < 1 && state.shutter >= 1) {
+      stage.classList.remove('tremor');
+      void stage.offsetWidth;
+      stage.classList.add('tremor');
+    }
+    prevShutter = state.shutter;
+
+    renderer.render(scene, camera);
+  }
+
+  // first frame before showing the canvas
+  root.classList.add('gl');
+  layout();
+
+  motion = !REDUCED;
+  fx = motion && !!(window.gsap && window.ScrollTrigger);
+  if (fx) {
+    root.classList.add('scroll-fx');
+    gsap.registerPlugin(ScrollTrigger);
+    const lines = gsap.utils.toArray('.msg-line');
+    gsap.set(lines, { opacity: 0 });
+    gsap.timeline({
+      defaults: { ease: 'none' },
+      scrollTrigger: { trigger: '#shutter', start: 'top top', end: '+=1200', scrub: 0.5 }
+    })
+      .to(state, { shutter: 1, duration: 0.25 }, 0)
+      .to(state, { lid: 1, duration: 0.25 }, 0.25)
+      .to(state, { sheet: 1, duration: 0.3 }, 0.5)
+      .to(lines, { opacity: 1, duration: 0.04, stagger: 0.16 / Math.max(1, lines.length - 1) }, 0.8);
+    gsap.from('.clerk-card', {
+      opacity: 0, y: 18, duration: 0.7, stagger: 0.12, ease: 'power2.out',
+      scrollTrigger: { trigger: '#clerk', start: 'top 80%', once: true }
+    });
+    addEventListener('load', () => ScrollTrigger.refresh());
+  } else {
+    state.shutter = 1; state.lid = 1; state.sheet = 1;
+  }
+  prevShutter = state.shutter;
+
+  if (motion && !COARSE) {
+    addEventListener('pointermove', (e) => {
+      pointer.x = (e.clientX / innerWidth) * 2 - 1;
+      pointer.y = (e.clientY / innerHeight) * 2 - 1;
+    }, { passive: true });
+  }
+
+  addEventListener('resize', () => { layout(); if (!motion) render(0); });
+  layout();
+
+  if (motion) {
+    const loop = (t) => { render(t); requestAnimationFrame(loop); };
+    requestAnimationFrame(loop);
+  } else {
+    render(0);
+  }
+}
+
+start().catch(() => { /* stays on the SVG fallback */ });
+</script>
+</body>
+</html>

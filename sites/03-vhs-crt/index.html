@@ -1,0 +1,621 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tracking Noturno — Late-Night Tape Rental</title>
+<meta name="description" content="Late-night tape rental. One night per tape. Pick a stretch of dead air, rewind it, and go to sleep.">
+<meta name="theme-color" content="#0B0A08">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=VT323&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.15.1/gsap.min.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.15.1/ScrollTrigger.min.js" defer></script>
+<style>
+:root{
+  --bg:#0B0A08;
+  --surface:#1C1915;
+  --text:#EDE3C8;
+  --accent:#F0A93B;
+  --status:#7FC79A;
+  --font-display:"VT323", "Courier New", monospace;
+  --font-body:"IBM Plex Mono", ui-monospace, "Courier New", monospace;
+}
+*{box-sizing:border-box}
+html{background:var(--bg);-webkit-text-size-adjust:100%}
+body{
+  margin:0;
+  background-color:var(--bg);
+  color:var(--text);
+  font-family:var(--font-body);
+  font-size:16px;
+  line-height:1.6;
+  overflow-x:hidden;
+  padding-top:0;
+  padding-bottom:56px;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));
+  padding-right:max(16px, env(safe-area-inset-right, 0px));
+}
+img,svg,canvas{max-width:100%}
+a{color:var(--accent)}
+h1,h2,h3{font-family:var(--font-display);font-weight:400;margin:0;line-height:1}
+h2{font-size:clamp(40px,7vw,72px);margin-bottom:20px}
+p{margin:0 0 14px}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+
+/* Fallback screen: shown when WebGL is absent, fails, or is too slow */
+.bg-fallback{
+  position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:radial-gradient(ellipse at 50% 42%, color-mix(in srgb, var(--accent) 16%, var(--bg)) 0%, var(--bg) 72%);
+}
+.bg-fallback::after{
+  content:"";position:absolute;inset:0;
+  background:repeating-linear-gradient(to bottom, color-mix(in srgb, var(--bg) 55%, transparent) 0 1px, transparent 1px 3px);
+}
+#crt{
+  position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;display:block;
+}
+html.gl-off #crt{display:none}
+
+.flash{
+  position:fixed;inset:0;z-index:5;pointer-events:none;opacity:0;background:var(--text);
+}
+.flash.on{animation:flash .3s linear 1}
+@keyframes flash{0%{opacity:0}30%{opacity:.35}100%{opacity:0}}
+
+.top{
+  position:relative;z-index:2;
+  display:flex;flex-wrap:wrap;gap:8px 20px;align-items:center;justify-content:space-between;
+  max-width:1040px;margin:0 auto;padding:18px 0;
+  font-size:13px;letter-spacing:.04em;text-transform:uppercase;
+}
+.top .mark{font-family:var(--font-display);font-size:26px;color:var(--text);text-decoration:none;letter-spacing:.02em}
+.top nav{display:flex;flex-wrap:wrap;gap:6px 18px}
+.top nav a{color:var(--text);text-decoration:none;border-bottom:1px solid transparent}
+.top nav a:hover{color:var(--accent);border-bottom-color:var(--accent)}
+
+main{position:relative;z-index:1;max-width:1040px;margin:0 auto}
+
+.panel{
+  background:color-mix(in srgb, var(--bg) 84%, transparent);
+  border:1px solid color-mix(in srgb, var(--text) 14%, transparent);
+  padding:clamp(20px,4vw,40px);
+  margin:0 0 28px;
+}
+.eyebrow{
+  font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin-bottom:12px;
+}
+
+/* Hero (balcão) */
+.hero{
+  min-height:100vh;min-height:100svh;
+  display:flex;flex-direction:column;justify-content:flex-end;
+  position:relative;
+  padding:24px 0 48px;
+}
+.nosignal{
+  position:absolute;left:0;right:0;top:44%;transform:translateY(-50%);
+  text-align:center;pointer-events:none;
+  font-family:var(--font-display);font-size:clamp(44px,9vw,104px);line-height:1;
+  color:var(--text);opacity:.7;text-shadow:0 0 14px color-mix(in srgb, var(--accent) 60%, transparent);
+  letter-spacing:.06em;
+}
+.hero-copy{
+  position:relative;z-index:1;
+  background:linear-gradient(to top, color-mix(in srgb, var(--bg) 92%, transparent) 60%, transparent);
+  padding:48px 0 0;
+}
+.brand{font-size:clamp(56px,13vw,156px);line-height:.9;letter-spacing:.01em;margin-bottom:14px}
+.tagline{font-family:var(--font-display);font-size:clamp(24px,4vw,34px);color:var(--accent);margin-bottom:20px;line-height:1.1}
+.hero-lines{list-style:none;padding:0;margin:0 0 26px;max-width:640px}
+.hero-lines li{padding:6px 0;border-top:1px solid color-mix(in srgb, var(--text) 18%, transparent)}
+.hero-lines li:first-child{font-weight:500}
+.btn{
+  display:inline-block;background:var(--accent);color:var(--bg);
+  font-family:var(--font-body);font-weight:500;font-size:15px;
+  padding:12px 20px;text-decoration:none;border:0;cursor:pointer;
+}
+.btn:hover{filter:brightness(1.08)}
+
+/* Rates */
+.rates{display:grid;gap:14px;grid-template-columns:1fr}
+.rate{background:var(--surface);padding:22px;border-top:3px solid var(--accent)}
+.rate h3{font-size:34px;margin-bottom:8px}
+.price{font-family:var(--font-display);font-size:58px;line-height:1;color:var(--accent);margin:6px 0 12px}
+.price small{font-family:var(--font-body);font-size:14px;color:var(--text);margin-left:6px}
+.price.blink{animation:blink .6s steps(1) 1}
+@keyframes blink{0%{opacity:1}50%{opacity:.2}100%{opacity:1}}
+.rate p{margin:0;font-size:15px}
+
+/* Shelf */
+.shelf{display:grid;gap:14px;grid-template-columns:1fr;list-style:none;padding:0;margin:0}
+.tape{
+  background:var(--surface);
+  border-left:6px solid var(--accent);
+  padding:16px 18px;
+  transition:transform .3s ease;
+  cursor:default;
+}
+.tape:nth-child(3n+2){border-left-color:var(--status)}
+.tape:nth-child(3n){border-left-color:var(--text)}
+.tape:hover,.tape:focus-visible{transform:translateY(-1cm)}
+.tape h3{font-size:30px;margin-bottom:6px}
+.tape .label{display:none;margin-top:10px;padding-top:10px;border-top:1px dashed color-mix(in srgb, var(--text) 35%, transparent);font-size:14px}
+.tape:hover .label,.tape:focus-visible .label{display:block}
+.tape .spine{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--text);opacity:.7}
+
+/* Rules */
+.rules-head{display:flex;flex-wrap:wrap;align-items:center;gap:14px 20px;justify-content:space-between}
+.reel{
+  font-family:var(--font-display);font-size:40px;line-height:1;height:1em;overflow:hidden;
+  color:var(--accent);background:var(--bg);padding:0 12px;border:1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  min-width:4.2em;text-align:center;
+}
+.reel-track{display:block;transition:transform .5s steps(4)}
+.reel-track span{display:block;height:1em}
+.rule-list{list-style:none;padding:0;margin:0;counter-reset:rule}
+.rule-list li{
+  counter-increment:rule;display:grid;grid-template-columns:auto 1fr;gap:4px 16px;
+  padding:16px 0;border-top:1px solid color-mix(in srgb, var(--text) 16%, transparent);
+}
+.rule-list li::before{content:counter(rule, decimal-leading-zero);font-family:var(--font-display);font-size:32px;color:var(--accent);line-height:1}
+.rule-list strong{font-weight:500}
+
+/* Dead hours */
+.clock{font-family:var(--font-display);font-size:clamp(64px,12vw,120px);line-height:1;color:var(--status);margin:4px 0 22px}
+.dead-copy .line{font-size:17px;margin-bottom:12px}
+
+/* Reserve */
+.reserve-form{display:grid;gap:16px;grid-template-columns:1fr;max-width:560px}
+.field{display:grid;gap:6px}
+.field label{font-size:13px;letter-spacing:.06em;text-transform:uppercase}
+.field input{
+  font:inherit;font-size:16px;color:var(--text);background:var(--bg);
+  border:1px solid color-mix(in srgb, var(--text) 35%, transparent);padding:12px;width:100%;
+  border-radius:0;color-scheme:dark;
+}
+.field input:focus{border-color:var(--accent);outline:none;box-shadow:0 0 0 2px color-mix(in srgb, var(--accent) 45%, transparent)}
+.status{min-height:1.6em;color:var(--status);font-weight:500;margin:0}
+.member{font-size:14px;opacity:.85;margin-top:18px}
+
+footer{margin-top:40px;font-size:13px;opacity:.85}
+
+/* Template notice (fixed bottom right, closable) */
+.notice{
+  position:fixed;right:max(16px, env(safe-area-inset-right, 0px));bottom:max(12px, env(safe-area-inset-bottom, 0px));
+  z-index:6;display:flex;align-items:center;gap:12px;
+  background:var(--surface);border:1px solid color-mix(in srgb, var(--text) 18%, transparent);
+  padding:8px 10px 8px 14px;max-width:calc(100vw - 32px);
+  font-family:var(--font-body);font-size:11px;line-height:1.4;color:color-mix(in srgb, var(--text) 60%, transparent);
+}
+.notice[hidden]{display:none}
+.notice button{
+  background:transparent;border:1px solid color-mix(in srgb, var(--text) 40%, transparent);color:var(--text);
+  width:28px;height:28px;cursor:pointer;font:inherit;font-size:14px;line-height:1;flex:none;
+}
+
+/* Responsive */
+@media (min-width:640px){
+  .rates{grid-template-columns:repeat(3,1fr)}
+  .shelf{grid-template-columns:repeat(2,1fr)}
+}
+@media (min-width:960px){
+  .shelf{grid-template-columns:repeat(3,1fr)}
+  .rule-list li{grid-template-columns:auto 1fr}
+}
+@media (max-width:767px){
+  .panel{padding:20px}
+}
+
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+  .flash{display:none}
+}
+</style>
+</head>
+<body>
+
+<div class="bg-fallback" aria-hidden="true"></div>
+<canvas id="crt" aria-hidden="true"></canvas>
+<div class="flash" id="flash" aria-hidden="true"></div>
+
+<header class="top">
+  <a class="mark" href="#hero">Tracking Noturno</a>
+  <nav aria-label="Sections">
+    <a href="#rates">Rates</a>
+    <a href="#shelf">Shelf</a>
+    <a href="#rules">Rules</a>
+    <a href="#dead-hours">Dead Hours</a>
+    <a href="#reserve">Reserve</a>
+  </nav>
+</header>
+
+<main>
+
+  <section id="hero" class="hero" aria-labelledby="hero-title">
+    <div class="nosignal" aria-hidden="true">NO SIGNAL</div>
+    <div class="hero-copy">
+      <p class="eyebrow">Open 22h to 10h, every night</p>
+      <h1 class="brand" id="hero-title">Tracking Noturno</h1>
+      <p class="tagline">Tape for the small hours. No programming.</p>
+      <ul class="hero-lines">
+        <li>Late-night tape rental. One night per tape.</li>
+        <li>Pick a stretch of dead air, rewind it, and go to sleep.</li>
+        <li>Tracking Noturno: open at 22h, closed when the signal comes back.</li>
+      </ul>
+      <a class="btn" href="#reserve">Reserve a night</a>
+    </div>
+  </section>
+
+  <section id="rates" class="panel" aria-labelledby="rates-title">
+    <p class="eyebrow">Rates</p>
+    <h2 id="rates-title">Priced by the night</h2>
+    <div class="rates">
+      <article class="rate">
+        <h3>Short Hours</h3>
+        <div class="price">R$ 12<small>/ night</small></div>
+        <p>Four hours of dead air, from midnight to four. Back by 10:00.</p>
+      </article>
+      <article class="rate">
+        <h3>Whole Night</h3>
+        <div class="price">R$ 19<small>/ night</small></div>
+        <p>Twenty-two hours to ten. The full stretch of signal-free quiet.</p>
+      </article>
+      <article class="rate">
+        <h3>Holiday Hours</h3>
+        <div class="price">R$ 29<small>/ night</small></div>
+        <p>Public holidays only. The quiet runs longer, and so do we.</p>
+      </article>
+    </div>
+  </section>
+
+  <section id="shelf" class="panel" aria-labelledby="shelf-title">
+    <p class="eyebrow">Shelf</p>
+    <h2 id="shelf-title">On the shelf tonight</h2>
+    <ul class="shelf">
+      <li class="tape" tabindex="0">
+        <h3>Lagoon, 03:12</h3>
+        <p class="spine">E-180 · 6 hr · Unrated</p>
+        <p class="label">Lake at the edge of town. Frogs, one distant truck, the hum of a lamp post.</p>
+      </li>
+      <li class="tape" tabindex="0">
+        <h3>Empty bus station, 04:40</h3>
+        <p class="spine">E-180 · 6 hr · Unrated</p>
+        <p class="label">Departure board switched off. A vending machine, one fan, nobody waiting.</p>
+      </li>
+      <li class="tape" tabindex="0">
+        <h3>Parking garage, 02:05</h3>
+        <p class="spine">T-120 · 4 hr · Unrated</p>
+        <p class="label">A fluorescent tube, a dripping pipe, and a car alarm two levels down.</p>
+      </li>
+      <li class="tape" tabindex="0">
+        <h3>Ferry dock, 05:18</h3>
+        <p class="spine">E-240 · 8 hr · Unrated</p>
+        <p class="label">Rope against the pilings, gulls not yet awake, water slapping the hull.</p>
+      </li>
+      <li class="tape" tabindex="0">
+        <h3>Night desk, 01:30</h3>
+        <p class="spine">T-120 · 4 hr · Unrated</p>
+        <p class="label">A phone that rings twice and stops. Then the hiss, for a long time.</p>
+      </li>
+      <li class="tape" tabindex="0">
+        <h3>Rooftop water tank, 06:02</h3>
+        <p class="spine">E-240 · 8 hr · Unrated</p>
+        <p class="label">Wind on tin, pigeons waking up, a city that has not started yet.</p>
+      </li>
+    </ul>
+  </section>
+
+  <section id="rules" class="panel" aria-labelledby="rules-title">
+    <div class="rules-head">
+      <div>
+        <p class="eyebrow">Rules</p>
+        <h2 id="rules-title">Rewind it. Bring it back by ten.</h2>
+      </div>
+      <div class="reel" aria-hidden="true"><span class="reel-track" id="reel"><span>01</span><span>02</span><span>03</span></span></div>
+    </div>
+    <ol class="rule-list">
+      <li><div><strong>Return by 10:00.</strong> Anything later is one more night, billed at the Whole Night rate.</div></li>
+      <li><div><strong>Rewinding fee.</strong> R$ 3 if the tape comes back unwound. We rewind it, and we charge for the favor.</div></li>
+      <li><div><strong>Keep it away from magnets.</strong> Speakers, the bedside lamp and the phone charger all count.</div></li>
+    </ol>
+  </section>
+
+  <section id="dead-hours" class="panel" aria-labelledby="dead-title">
+    <p class="eyebrow">Dead Hours</p>
+    <h2 id="dead-title">The signal is off. The counter is open.</h2>
+    <p class="clock" aria-label="Current time"><span id="clock">--:--</span></p>
+    <div class="dead-copy">
+      <p class="line">The city goes quiet around two.</p>
+      <p class="line">The signal is still on somewhere, just not on your screen.</p>
+      <p class="line">Rent the tape, put it on, and let the hiss keep the room company.</p>
+      <p class="line">Tracking Noturno is open all night, which is when people ask for this.</p>
+    </div>
+  </section>
+
+  <section id="reserve" class="panel" aria-labelledby="reserve-title">
+    <p class="eyebrow">Reserve</p>
+    <h2 id="reserve-title">Reserve at the counter</h2>
+    <form class="reserve-form" id="reserve-form" novalidate>
+      <div class="field">
+        <label for="email">Email</label>
+        <input id="email" name="email" type="email" autocomplete="email" required placeholder="you@example.com">
+      </div>
+      <div class="field">
+        <label for="night">Night of</label>
+        <input id="night" name="night" type="date" required>
+      </div>
+      <div>
+        <button class="btn" type="submit">Reserve tape</button>
+      </div>
+      <p class="status" id="status" role="status" aria-live="polite"></p>
+    </form>
+    <p class="member">Madrugueiro card: your first night is free when you join at the counter.</p>
+  </section>
+
+</main>
+
+<footer>
+  <p style="position:relative;z-index:1;max-width:1040px;margin:0 auto">Tracking Noturno. Open 22:00 to 10:00, every night. Rewinding fee applies.</p>
+</footer>
+
+<div class="notice" id="notice" role="note">
+  <span>Template de demonstração: marca inventada, não é uma empresa real.</span>
+  <button type="button" id="notice-close" aria-label="Close notice">x</button>
+</div>
+
+<script>
+/* Markup-only setup: runs before any library, keeps content visible without JS. */
+(function(){
+  try {
+    if (sessionStorage.getItem('tn-notice-closed') === '1') document.getElementById('notice').hidden = true;
+  } catch (e) {}
+  document.getElementById('notice-close').addEventListener('click', function(){
+    document.getElementById('notice').hidden = true;
+    try { sessionStorage.setItem('tn-notice-closed', '1'); } catch (e) {}
+  });
+})();
+</script>
+
+<script>
+window.addEventListener('load', function(){
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var mobile = function(){ return window.innerWidth < 768; };
+
+  /* ---------- WebGL CRT shader (own fragment shader, no library) ---------- */
+  var VS = 'attribute vec2 p;void main(){gl_Position=vec4(p,0.0,1.0);}';
+  var FS = [
+    'precision mediump float;',
+    'uniform vec2 u_res;uniform float u_time;uniform float u_scroll;uniform float u_vel;',
+    'uniform float u_phase;uniform vec2 u_mouse;uniform float u_mouseAmt;uniform float u_curve;',
+    'uniform float u_still;uniform float u_track;',
+    'const vec3 AMBER=vec3(0.94,0.66,0.23);',
+    'float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}',
+    'vec3 bars(vec2 uv){',
+    '  float i=floor(uv.x*7.0);',
+    '  vec3 c=vec3(0.93,0.89,0.78);',
+    '  if(i>0.5&&i<1.5)c=AMBER;',
+    '  else if(i>1.5&&i<2.5)c=vec3(0.50,0.78,0.60);',
+    '  else if(i>2.5&&i<3.5)c=vec3(0.11,0.10,0.08);',
+    '  else if(i>4.5&&i<5.5)c=AMBER*0.5;',
+    '  else if(i>5.5)c=vec3(0.11,0.10,0.08);',
+    '  return c*0.45;',
+    '}',
+    'vec3 night(vec2 uv,float t){',
+    '  float horizon=0.3;',
+    '  vec3 sky=mix(vec3(0.03,0.025,0.02),vec3(0.09,0.065,0.04),uv.y);',
+    '  vec2 cell=floor(vec2(uv.x*120.0,uv.y*60.0));',
+    '  float lit=step(0.985,hash(cell))*step(uv.y,horizon+0.12);',
+    '  float tw=0.6+0.4*sin(t*0.6+hash(cell)*6.28);',
+    '  float glow=exp(-abs(uv.y-horizon)*14.0)*0.45;',
+    '  return sky+AMBER*(glow+lit*tw*0.5);',
+    '}',
+    'void main(){',
+    '  vec2 frag=gl_FragCoord.xy;',
+    '  vec2 uv=frag/u_res;',
+    '  vec2 c=uv*2.0-1.0;',
+    '  c*=1.0+dot(c,c)*u_curve;',
+    '  vec2 cuv=c*0.5+0.5;',
+    '  if(cuv.x<0.0||cuv.x>1.0||cuv.y<0.0||cuv.y>1.0){gl_FragColor=vec4(0.04,0.036,0.03,1.0);return;}',
+    '  float live=1.0-u_still;',
+    '  float bandY=fract(1.0-u_scroll*1.6-u_time*0.03*live);',
+    '  float band=smoothstep(0.04,0.0,abs(cuv.y-bandY))*(0.25+u_vel*0.75+u_track*0.6)*live;',
+    '  vec2 asp=vec2(u_res.x/u_res.y,1.0);',
+    '  vec2 dm=(cuv-u_mouse)*asp;',
+    '  float stab=u_mouseAmt*exp(-dot(dm,dm)*12.0)*live;',
+    '  band*=1.0-stab;',
+    '  float jit=(hash(vec2(floor(cuv.y*180.0),floor(u_time*8.0)))-0.5)*0.05*band;',
+    '  vec2 q=vec2(cuv.x+jit,cuv.y);',
+    '  float ph=clamp(u_phase,0.0,2.0);',
+    '  float wS=clamp(1.0-ph,0.0,1.0);',
+    '  float wB=clamp(1.0-abs(ph-1.0),0.0,1.0);',
+    '  float wN=clamp(ph-1.0,0.0,1.0);',
+    '  float seed=floor(u_time*8.0)*live;',
+    '  float n=hash(floor(frag)+vec2(seed,seed*0.7));',
+    '  vec3 staticC=vec3(n)*AMBER*0.5;',
+    '  vec3 scene=staticC*wS+bars(q)*wB+night(q,u_time)*wN;',
+    '  scene+=band*vec3(0.55,0.5,0.4)*(0.5+n*0.5);',
+    '  vec3 calm=night(q,u_time);',
+    '  scene=mix(scene,calm,stab);',
+    '  float scan=0.84+0.16*sin(frag.y*3.14159);',
+    '  float m=mod(frag.x,3.0);',
+    '  vec3 mask=vec3(1.0-smoothstep(0.0,1.0,abs(m-0.5)),1.0-smoothstep(0.0,1.0,abs(m-1.5)),1.0-smoothstep(0.0,1.0,abs(m-2.5)));',
+    '  mask=0.7+0.3*mask;',
+    '  float vig=smoothstep(1.35,0.25,length(c));',
+    '  vec3 col=scene*scan*mask*(0.55+0.45*vig)*0.9;',
+    '  gl_FragColor=vec4(col,1.0);',
+    '}'
+  ].join('\n');
+
+  var canvas = document.getElementById('crt');
+  var gl = null, prog = null, U = {};
+  var state = { phase:0, scroll:0, vel:0, mouse:[0.5,0.5], mouseAmt:0, track:0, time:0, curve:0.04 };
+  var mouseOver = false, lastTs = 0, slowSince = null, running = false;
+
+  function compile(type, src){
+    var s = gl.createShader(type);
+    gl.shaderSource(s, src); gl.compileShader(s);
+    return gl.getShaderParameter(s, gl.COMPILE_STATUS) ? s : null;
+  }
+  function initGL(){
+    try { gl = canvas.getContext('webgl', { antialias:false, alpha:false, preserveDrawingBuffer:false }); } catch (e) { gl = null; }
+    if (!gl) return false;
+    var vs = compile(gl.VERTEX_SHADER, VS), fs = compile(gl.FRAGMENT_SHADER, FS);
+    if (!vs || !fs) return false;
+    prog = gl.createProgram();
+    gl.attachShader(prog, vs); gl.attachShader(prog, fs); gl.linkProgram(prog);
+    if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) return false;
+    gl.useProgram(prog);
+    var buf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 3,-1, -1,3]), gl.STATIC_DRAW);
+    var loc = gl.getAttribLocation(prog, 'p');
+    gl.enableVertexAttribArray(loc);
+    gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+    ['u_res','u_time','u_scroll','u_vel','u_phase','u_mouse','u_mouseAmt','u_curve','u_still','u_track']
+      .forEach(function(n){ U[n] = gl.getUniformLocation(prog, n); });
+    return true;
+  }
+  function resize(){
+    var dpr = Math.min(window.devicePixelRatio || 1, 1.5) * (mobile() ? 0.5 : 1);
+    canvas.width = Math.max(1, Math.round(window.innerWidth * dpr));
+    canvas.height = Math.max(1, Math.round(window.innerHeight * dpr));
+    gl.viewport(0, 0, canvas.width, canvas.height);
+    state.curve = mobile() ? 0 : 0.04;
+  }
+  function draw(t){
+    gl.uniform2f(U.u_res, canvas.width, canvas.height);
+    gl.uniform1f(U.u_time, t);
+    gl.uniform1f(U.u_scroll, state.scroll);
+    gl.uniform1f(U.u_vel, state.vel);
+    gl.uniform1f(U.u_phase, state.phase);
+    gl.uniform2f(U.u_mouse, state.mouse[0], state.mouse[1]);
+    gl.uniform1f(U.u_mouseAmt, reduce ? 0 : state.mouseAmt);
+    gl.uniform1f(U.u_curve, state.curve);
+    gl.uniform1f(U.u_still, reduce ? 1 : 0);
+    gl.uniform1f(U.u_track, reduce ? 0 : state.track);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+  }
+  function renderOnce(){ if (gl && !running) draw(0); }
+  function fallback(){
+    running = false;
+    document.documentElement.classList.add('gl-off');
+  }
+  function loop(ts){
+    if (!running) return;
+    var dt = lastTs ? ts - lastTs : 16; lastTs = ts;
+    // Too slow for 3 seconds in a row: drop to the CSS fallback.
+    if (dt > 24) { if (slowSince === null) slowSince = ts; else if (ts - slowSince > 3000) return fallback(); }
+    else slowSince = null;
+    state.time += dt / 1000;
+    state.vel *= 0.9;
+    state.track *= 0.95;
+    state.mouseAmt += ((mouseOver ? 1 : 0) - state.mouseAmt) * 0.08;
+    draw(state.time);
+    requestAnimationFrame(loop);
+  }
+
+  if (initGL()) {
+    resize();
+    window.addEventListener('resize', function(){ resize(); renderOnce(); });
+    if (!reduce) {
+      running = true;
+      requestAnimationFrame(loop);
+    } else {
+      draw(0);
+    }
+  } else {
+    document.documentElement.classList.add('gl-off');
+  }
+
+  window.addEventListener('pointermove', function(e){
+    if (reduce) return;
+    state.mouse = [e.clientX / window.innerWidth, 1 - e.clientY / window.innerHeight];
+    mouseOver = true;
+  }, { passive:true });
+  window.addEventListener('pointerleave', function(){ mouseOver = false; });
+
+  /* ---------- Clock: updates each minute, kicks the tracking band ---------- */
+  var clockEl = document.getElementById('clock');
+  var lastMin = '';
+  function tick(){
+    var d = new Date();
+    var hh = String(d.getHours()).padStart(2, '0');
+    var mm = String(d.getMinutes()).padStart(2, '0');
+    clockEl.textContent = hh + ':' + mm;
+    if (mm !== lastMin) { lastMin = mm; state.track = 1; }
+  }
+  tick();
+  setInterval(tick, 1000);
+
+  /* ---------- Reservation: no network, one flash, green status ---------- */
+  var form = document.getElementById('reserve-form');
+  var status = document.getElementById('status');
+  var flash = document.getElementById('flash');
+  form.addEventListener('submit', function(e){
+    e.preventDefault();
+    if (!form.reportValidity()) { status.textContent = ''; return; }
+    if (!reduce) { flash.classList.remove('on'); void flash.offsetWidth; flash.classList.add('on'); }
+    status.style.color = 'var(--status)';
+    status.textContent = 'Reserved for ' + document.getElementById('night').value + '.';
+  });
+
+  /* ---------- GSAP + ScrollTrigger (optional; page works without it) ---------- */
+  if (window.gsap && window.ScrollTrigger) {
+    gsap.registerPlugin(ScrollTrigger);
+
+    var setPhase = function(v){
+      if (reduce) { state.phase = v; renderOnce(); }
+      else gsap.to(state, { phase: v, duration: 0.8, overwrite: true, onUpdate: renderOnce });
+    };
+
+    // Tape advances in three steps: static, colour bars, night hum.
+    ScrollTrigger.create({ trigger:'#rates', start:'top 60%', onEnter:function(){ setPhase(1); }, onLeaveBack:function(){ setPhase(0); } });
+    ScrollTrigger.create({ trigger:'#rules', start:'top 60%', onEnter:function(){ setPhase(2); }, onLeaveBack:function(){ setPhase(1); } });
+
+    // Scroll drives the tracking band and velocity, no pinning.
+    ScrollTrigger.create({
+      start: 0, end: 'max',
+      onUpdate: function(self){
+        state.scroll = self.progress;
+        state.vel = Math.min(1, Math.abs(self.getVelocity()) / 4000);
+        renderOnce();
+      }
+    });
+
+    // Rules counter reel.
+    var reel = document.getElementById('reel');
+    var rules = document.querySelectorAll('.rule-list li');
+    rules.forEach(function(li, i){
+      ScrollTrigger.create({
+        trigger: li, start: 'top 75%',
+        onEnter: function(){ reel.style.transform = 'translateY(' + (-i) + 'em)'; }
+      });
+    });
+
+    // Hero entrance with a short tracking stutter.
+    if (!reduce) {
+      gsap.fromTo('.brand', { opacity:0, skewX:8 }, { opacity:1, skewX:0, duration:0.9, ease:'steps(5)' });
+    }
+
+    // Price blink, once on entry.
+    document.querySelectorAll('.price').forEach(function(p){
+      ScrollTrigger.create({ trigger: p, start: 'top 85%', once: true, onEnter: function(){ p.classList.add('blink'); } });
+    });
+
+    // Rates cards shift with scroll.
+    if (!reduce) {
+      gsap.fromTo('.rate', { y: 18 }, { y: -10, ease: 'none', stagger: 0.04,
+        scrollTrigger: { trigger: '#rates', start: 'top bottom', end: 'bottom top', scrub: true } });
+    }
+
+    // Dead hours copy appears line by line.
+    if (!reduce) {
+      gsap.from('#dead-hours .line', { opacity:0, y:8, stagger:0.25, duration:0.6,
+        scrollTrigger: { trigger:'#dead-hours', start:'top 75%' } });
+    }
+  }
+});
+</script>
+
+</body>
+</html>

@@ -1,0 +1,598 @@
+<!doctype html>
+<html lang="en" class="no-js">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hold Tone Supply — Dial-up Waveform</title>
+<meta name="description" content="Hold Tone Supply sells deliberate waiting by the minute. Watch a modem negotiate its carrier, then take home a receipt for the time you spent.">
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=VT323&display=swap">
+<style>
+:root{
+  --bg:#07090A;
+  --surface:#0F1A14;
+  --text:#B8F5C4;
+  --accent:#FFB347;
+  --status:#FF5A4E;
+  --text-soft:rgba(184,245,196,.72);
+  --text-faint:rgba(184,245,196,.42);
+  --rule:rgba(184,245,196,.18);
+  --grid:rgba(184,245,196,.07);
+  --display:"VT323", "Courier New", monospace;
+  --mono:"IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{background:var(--bg);color-scheme:dark;-webkit-text-size-adjust:100%}
+@media (prefers-reduced-motion: no-preference){html{scroll-behavior:smooth}}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--text);
+  font:400 15px/1.6 var(--mono);
+  letter-spacing:.02em;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));
+  padding-right:max(16px, env(safe-area-inset-right, 0px));
+  padding-bottom:max(16px, env(safe-area-inset-bottom, 0px));
+  overflow-x:clip;
+  overflow-wrap:break-word;
+  -webkit-font-smoothing:antialiased;
+}
+img,canvas,svg{display:block;max-width:100%}
+a{color:inherit}
+button{font:inherit;color:inherit}
+.wrap{max-width:1180px;margin:0 auto}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+
+/* top bar */
+.top{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:20px 0;border-bottom:1px solid var(--rule)}
+.brand{font:400 26px/1 var(--display);letter-spacing:.06em;text-decoration:none;text-shadow:0 0 10px rgba(184,245,196,.35)}
+.top nav{display:flex;gap:20px;font-size:12px;text-transform:uppercase;letter-spacing:.14em}
+.top nav a{text-decoration:none;color:var(--text-soft)}
+.top nav a:hover,.top nav a:focus-visible{color:var(--text);text-decoration:underline;text-underline-offset:4px}
+
+/* scroll track and sticky stage */
+.track{position:relative;height:400vh;height:400svh}
+.scope{
+  position:sticky;top:0;
+  height:100vh;height:100svh;
+  margin-top:20px;
+  overflow:hidden;
+  border:1px solid var(--rule);
+  background-color:var(--surface);
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size:40px 40px;
+}
+.scope::after{
+  content:"";position:absolute;inset:0;pointer-events:none;z-index:3;
+  background:repeating-linear-gradient(0deg, rgba(0,0,0,.14) 0 1px, transparent 1px 3px);
+}
+#wave{position:absolute;inset:0;width:100%;height:100%;z-index:1}
+.line-fallback{
+  display:none;position:absolute;left:8%;right:8%;top:36%;height:2px;z-index:1;
+  background:var(--text);box-shadow:0 0 12px rgba(184,245,196,.5);
+}
+.scope.no-canvas #wave{display:none}
+.scope.no-canvas .line-fallback{display:block}
+
+.meta{
+  position:absolute;top:14px;left:16px;right:16px;z-index:2;
+  display:flex;justify-content:space-between;align-items:baseline;gap:12px;
+  font-size:11px;text-transform:uppercase;letter-spacing:.16em;color:var(--text-soft);
+}
+.clock{font:400 30px/1 var(--display);letter-spacing:.04em;color:var(--text);text-shadow:0 0 8px rgba(184,245,196,.4);font-variant-numeric:tabular-nums}
+
+.beats{position:absolute;inset:0;z-index:2;pointer-events:none}
+.beat{
+  position:absolute;left:0;right:0;bottom:7%;
+  padding:0 clamp(16px,4vw,48px);
+  max-width:46rem;
+  visibility:hidden;opacity:0;transform:translateY(8px);
+  transition:opacity .45s ease, transform .45s ease, visibility .45s;
+}
+.beat.is-on{visibility:visible;opacity:1;transform:none}
+.beat .kicker{font-size:11px;text-transform:uppercase;letter-spacing:.18em;color:var(--text-soft);margin:0 0 10px}
+.beat h1,.beat .display{
+  font:400 clamp(60px,12vw,148px)/.9 var(--display);
+  margin:0 0 14px;text-shadow:0 0 14px rgba(184,245,196,.35);
+}
+.beat .display{font-size:clamp(40px,6vw,76px)}
+.beat p{margin:0 0 10px;color:var(--text-soft);max-width:36rem}
+.beat p.lead{color:var(--text);font-size:17px}
+.cta{
+  display:inline-block;margin-top:10px;padding:10px 16px;
+  border:1px solid var(--text);text-decoration:none;text-transform:uppercase;font-size:12px;letter-spacing:.16em;
+  pointer-events:auto;
+}
+.cta:hover,.cta:focus-visible{background:var(--text);color:var(--bg)}
+
+/* sections after the stage */
+.section{padding:72px 0 16px}
+.label{font-size:11px;text-transform:uppercase;letter-spacing:.18em;color:var(--text-soft);margin:0 0 12px}
+.h2{font:400 clamp(44px,7vw,84px)/.92 var(--display);margin:0 0 16px;text-shadow:0 0 12px rgba(184,245,196,.3)}
+.intro{max-width:40rem;color:var(--text-soft);margin:0 0 32px}
+
+.packs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.pack{border:1px solid var(--rule);background:var(--surface);padding:18px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.pack-head{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid var(--rule);padding-bottom:10px}
+.pack-head strong{font:400 52px/.9 var(--display);text-shadow:0 0 10px rgba(184,245,196,.35)}
+.pack-head span{font-size:11px;text-transform:uppercase;letter-spacing:.16em;color:var(--text-soft)}
+.pack h3{font-size:15px;font-weight:500;margin:0;text-transform:uppercase;letter-spacing:.1em}
+.pack p{margin:0;color:var(--text-soft);font-size:14px}
+.pack canvas{width:100%;height:56px;border-top:1px dashed var(--rule);border-bottom:1px dashed var(--rule)}
+.spec{margin:0;display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:12px;text-transform:uppercase;letter-spacing:.08em}
+.spec dt{color:var(--text-faint)}
+.spec dd{margin:0;text-align:right}
+.pick{
+  margin-top:auto;padding:12px;background:transparent;border:1px solid var(--rule);cursor:pointer;
+  text-transform:uppercase;letter-spacing:.14em;font-size:12px;
+}
+.pick:hover{border-color:var(--text)}
+.pick[aria-pressed="true"]{border:2px solid var(--text);background:rgba(184,245,196,.08)}
+.pick:focus-visible{outline:2px solid var(--text);outline-offset:3px}
+
+.receipt-wrap{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:32px;align-items:start}
+.receipt-ctrl p{color:var(--text-soft);max-width:30rem}
+.buy{
+  margin-top:12px;padding:14px 22px;cursor:pointer;
+  background:var(--accent);color:var(--bg);border:0;
+  font-size:13px;text-transform:uppercase;letter-spacing:.16em;font-weight:500;
+}
+.buy:hover{filter:brightness(1.08)}
+.buy:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+#receipt-out{
+  margin:0;padding:22px 20px;border:1px solid var(--rule);background:var(--surface);
+  font:400 14px/1.65 var(--mono);white-space:pre-wrap;color:var(--text);min-height:300px;
+  text-shadow:0 0 6px rgba(184,245,196,.25);
+}
+#receipt-out .muted{color:var(--text-faint)}
+
+.foot{margin-top:72px;border-top:1px solid var(--rule);padding:24px 0 8px;display:grid;gap:10px;font-size:13px;color:var(--text-soft)}
+.foot .row{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px}
+.template-note{margin:18px 0 0;font-size:10px;line-height:1.5;text-transform:uppercase;letter-spacing:.12em;color:var(--text-faint)}
+
+/* no-JS: stacked text, no sticky stage, line as static rule */
+html:not(.js) .track{height:auto}
+html:not(.js) .scope{position:relative;height:auto;min-height:60vh;margin-top:20px}
+html:not(.js) #wave{display:none}
+html:not(.js) .line-fallback{display:block}
+html:not(.js) .beats{position:relative;inset:auto;padding:24px 0}
+html:not(.js) .beat{position:relative;left:auto;right:auto;bottom:auto;visibility:visible;opacity:1;transform:none;padding:24px clamp(16px,4vw,48px)}
+html:not(.js) .meta .clock{display:none}
+
+@media (max-width:820px){
+  .packs{grid-template-columns:1fr}
+  .receipt-wrap{grid-template-columns:1fr;gap:20px}
+  .track{height:300vh;height:300svh}
+  .top nav{gap:14px}
+}
+@media (max-width:520px){
+  .top{flex-direction:column;align-items:flex-start;gap:10px}
+  .meta{font-size:10px}
+  .clock{font-size:24px}
+  .beat .display{font-size:40px}
+  .beat p.lead{font-size:16px}
+  #receipt{font-size:13px;padding:18px 14px}
+}
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <a class="brand" href="#top">HOLD TONE SUPPLY</a>
+  <nav aria-label="Page">
+    <a href="#packages">Packages</a>
+    <a href="#receipt">Receipt</a>
+  </nav>
+</header>
+
+<main id="top">
+
+<div class="track" id="track">
+  <div class="scope" id="scope">
+    <canvas id="wave" role="img" aria-label="Flat line, no carrier."></canvas>
+    <div class="line-fallback" aria-hidden="true"></div>
+    <div class="meta">
+      <span>Line 01 &middot; Carrier wait</span>
+      <span class="clock" id="clock" aria-label="Seconds of negotiation">00:00</span>
+    </div>
+
+    <div class="beats">
+      <div class="beat" data-beat="0">
+        <p class="kicker">Line status: idle</p>
+        <h1>Wait on purpose.</h1>
+        <p class="lead">Forty-five seconds of carrier negotiation, sold by the minute.</p>
+        <p>No sound. Just the line deciding whether to connect.</p>
+        <a class="cta" href="#packages">Start the wait</a>
+      </div>
+      <div class="beat" data-beat="1">
+        <p class="kicker">Phase 01 &middot; Dial</p>
+        <p class="display">The tone comes first.</p>
+        <p>Pick a pack of two, five or twelve minutes. Each one is a full-screen session of the line dialing out, ending in a receipt for the wait.</p>
+      </div>
+      <div class="beat" data-beat="2">
+        <p class="kicker">Phase 02 &middot; Negotiate</p>
+        <p class="display">The line tries again.</p>
+        <p>Frequencies jump and the noise rises while the two ends agree on a speed. You watch it happen. Nothing is skipped and nothing is sped up. Move the pointer over the line to leave a trace.</p>
+      </div>
+      <div class="beat" data-beat="3">
+        <p class="kicker">Phase 03 &middot; Carrier</p>
+        <p class="display">Carrier detected.</p>
+        <p>The wave settles. The connection holds. That is the whole product, and it took the full forty-five seconds.</p>
+        <a class="cta" href="#packages">Choose your wait</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<section class="section" id="packages" aria-labelledby="packages-title">
+  <p class="label">Packages</p>
+  <h2 class="h2" id="packages-title">Pick a length of wait.</h2>
+  <p class="intro">Each pack is one session of carrier negotiation, ending in a receipt for the time you spent on the line.</p>
+
+  <div class="packs">
+    <article class="pack" data-pack="2">
+      <div class="pack-head"><strong>02</strong><span>Minutes</span></div>
+      <h3>Short hold</h3>
+      <p>A quick negotiation. Two minutes is enough to hear the tone settle and lock.</p>
+      <canvas data-mini="0" aria-hidden="true"></canvas>
+      <dl class="spec">
+        <dt>Carrier</dt><dd>Handshake only</dd>
+        <dt>Hold</dt><dd>02:00</dd>
+        <dt>Receipt</dt><dd>Included</dd>
+      </dl>
+      <button class="pick" type="button" data-pick="2" aria-pressed="false">Choose 02 min</button>
+    </article>
+
+    <article class="pack" data-pack="5">
+      <div class="pack-head"><strong>05</strong><span>Minutes</span></div>
+      <h3>Standard hold</h3>
+      <p>Five minutes of frequency jumps, noise and a clean connect. Most people choose this one.</p>
+      <canvas data-mini="1" aria-hidden="true"></canvas>
+      <dl class="spec">
+        <dt>Carrier</dt><dd>Full negotiation</dd>
+        <dt>Hold</dt><dd>05:00</dd>
+        <dt>Receipt</dt><dd>Included</dd>
+      </dl>
+      <button class="pick" type="button" data-pick="5" aria-pressed="true">Choose 05 min</button>
+    </article>
+
+    <article class="pack" data-pack="12">
+      <div class="pack-head"><strong>12</strong><span>Minutes</span></div>
+      <h3>Long hold</h3>
+      <p>Twelve minutes of the line searching for a tone it likes. Leave it running in the background.</p>
+      <canvas data-mini="2" aria-hidden="true"></canvas>
+      <dl class="spec">
+        <dt>Carrier</dt><dd>Repeated retries</dd>
+        <dt>Hold</dt><dd>12:00</dd>
+        <dt>Receipt</dt><dd>Included</dd>
+      </dl>
+      <button class="pick" type="button" data-pick="12" aria-pressed="false">Choose 12 min</button>
+    </article>
+  </div>
+</section>
+
+<section class="section" id="receipt" aria-labelledby="receipt-title">
+  <p class="label">Receipt</p>
+  <div class="receipt-wrap">
+    <div class="receipt-ctrl">
+      <h2 class="h2" id="receipt-title">Keep the wait.</h2>
+      <p>A wait is only worth something if you can prove it. Get the receipt for the pack you selected and keep it with the rest of your time.</p>
+      <p>Selected pack: <span id="selected">05 min</span></p>
+      <button class="buy" type="button" id="get-receipt">Get the receipt</button>
+    </div>
+    <pre id="receipt-out" aria-live="polite"><span class="muted">No receipt yet.
+Choose a pack, then get the receipt.</span></pre>
+  </div>
+</section>
+
+</main>
+
+<footer class="foot">
+  <div class="row">
+    <span>Dial-in: 555-0100 (line not in service)</span>
+    <span>Hold Tone Supply &middot; Wait on purpose</span>
+  </div>
+  <div class="row">
+    <span>&copy; 2026 Hold Tone Supply. All waiting reserved.</span>
+  </div>
+  <p class="template-note">TEMPLATE: marca e endereço não reais; substituir antes de publicar.</p>
+</footer>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.15.1/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.15.1/ScrollTrigger.min.js"></script>
+<script>
+(function(){
+  var doc = document.documentElement;
+  doc.classList.remove('no-js');
+  doc.classList.add('js');
+
+  var REDUCED = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var HAS_GSAP = typeof window.gsap !== 'undefined' && typeof window.ScrollTrigger !== 'undefined';
+  var BEAT_LEVELS = [0, 1, 2.4, 3.6];
+  var BEAT_LABELS = [
+    'Flat line, no carrier.',
+    'Clean carrier tone while dialing.',
+    'Carrier negotiation: frequency jumps and rising noise.',
+    'Carrier detected. The line is stable.'
+  ];
+
+  var scope = document.getElementById('scope');
+  var track = document.getElementById('track');
+  var canvas = document.getElementById('wave');
+  var clockEl = document.getElementById('clock');
+  var beats = [].slice.call(document.querySelectorAll('.beat'));
+  var ctx = canvas && canvas.getContext ? canvas.getContext('2d') : null;
+  if (!ctx) { scope.classList.add('no-canvas'); }
+
+  // Single phase variable: GSAP (or the scroll fallback) writes S.level, the drawing reads it.
+  var S = { level: 0, beat: -1, kick: 0, jump: 0, jumpT: 0, sec: -1, trail: [] };
+  var NZ = new Float32Array(256);
+  for (var z = 0; z < 256; z++) NZ[z] = Math.random() * 2 - 1;
+
+  var css = getComputedStyle(doc);
+  var TEXT = css.getPropertyValue('--text').trim();
+  var ACCENT = css.getPropertyValue('--accent').trim();
+  var STATUS = css.getPropertyValue('--status').trim();
+
+  var W = 0, H = 0, DPR = 1, POINTS = 256, raf = 0;
+  var minis = [].slice.call(document.querySelectorAll('[data-mini]')).map(function(c){
+    var card = c.closest('.pack');
+    var base = [2, 3.5, 5][+c.getAttribute('data-mini')];
+    var m = { el: c, ctx: c.getContext ? c.getContext('2d') : null, base: base, f: base, hot: false, w: 0, h: 0 };
+    card.addEventListener('pointerenter', function(){ m.hot = true; });
+    card.addEventListener('pointerleave', function(){ m.hot = false; });
+    return m;
+  });
+
+  function clamp(v, a, b){ return v < a ? a : (v > b ? b : v); }
+
+  function sizeCanvas(c, cx){
+    var w = c.clientWidth, h = c.clientHeight;
+    c.width = Math.round(w * DPR);
+    c.height = Math.round(h * DPR);
+    if (cx) cx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    return { w: w, h: h };
+  }
+
+  function resize(){
+    DPR = Math.min(window.devicePixelRatio || 1, 2);
+    if (ctx) {
+      var s = sizeCanvas(canvas, ctx);
+      W = s.w; H = s.h;
+      POINTS = W < 720 ? 128 : 256;
+    }
+    minis.forEach(function(m){
+      if (!m.ctx) return;
+      var s = sizeCanvas(m.el, m.ctx);
+      m.w = s.w; m.h = s.h;
+    });
+    if (REDUCED) paint(performance.now());
+  }
+
+  function setBeat(i){
+    if (i === S.beat) return;
+    S.beat = i;
+    beats.forEach(function(b, k){ b.classList.toggle('is-on', k === i); });
+    if (canvas) canvas.setAttribute('aria-label', BEAT_LABELS[i]);
+  }
+
+  function updateClock(){
+    var sec = REDUCED ? 45 : Math.round(clamp((S.level - 1.2) / 2, 0, 1) * 45);
+    if (sec !== S.sec) {
+      S.sec = sec;
+      clockEl.textContent = '00:' + (sec < 10 ? '0' : '') + sec;
+    }
+  }
+
+  // Maps scroll progress (0..1 across the track) to beat and, in reduced motion, to a static frame.
+  function onProgress(p){
+    var idx = Math.min(3, Math.floor(p * 4));
+    setBeat(idx);
+    if (REDUCED) {
+      S.level = BEAT_LEVELS[idx];
+      paint(performance.now());
+    }
+  }
+
+  function drawWave(now){
+    var t = REDUCED ? 0 : now / 1000;
+    var L = S.level;
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+    ctx.globalAlpha = 1;
+
+    var cy = H * 0.36;
+    var ampMax = Math.min(H * 0.14, W * 0.3);
+    var k = clamp((L - 0.15) / 0.7, 0, 1);
+    var amp = ampMax * k;
+    var noise = clamp((L - 1.4) / 1, 0, 1) * clamp((3.2 - L) / 0.4, 0, 1);
+    var connected = L >= 3.2;
+
+    if (!REDUCED && L >= 1.4 && !connected && t > S.jumpT) {
+      S.jump = Math.random() * 2 - 1;
+      S.jumpT = t + 0.35 + Math.random() * 0.5;
+    }
+    var freq = connected ? 4 : 3;
+    if (!connected && L >= 1.4) freq += S.jump * 2.5;
+    if (!REDUCED && S.kick > 0.001) { freq += S.kick * 3; S.kick *= 0.94; }
+    var speed = connected ? 3 : 6;
+
+    if (!REDUCED && noise > 0) {
+      for (var j = 0; j < 256; j++) NZ[j] += ((Math.random() * 2 - 1) - NZ[j]) * 0.5;
+    }
+
+    ctx.beginPath();
+    for (var i = 0; i <= POINTS; i++) {
+      var x = i / POINTS;
+      var px = x * W;
+      var ph = 2 * Math.PI * freq * x + t * speed;
+      var jitter = (1 - k) * ampMax * 0.05 * Math.sin(x * 60 + t * 5);
+      var n = ampMax * noise * 0.8 * NZ[Math.min(255, Math.round(x * 255))];
+      var y = cy + amp * Math.sin(ph) + n + jitter;
+      if (i === 0) ctx.moveTo(px, y); else ctx.lineTo(px, y);
+    }
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = TEXT;
+    ctx.globalAlpha = 0.2;
+    ctx.lineWidth = 6;
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+    ctx.lineWidth = 1.6;
+    ctx.stroke();
+
+    // Amber cursor on the empty line only
+    if (L < 0.15 && (REDUCED || Math.floor(t * 2) % 2 === 0)) {
+      ctx.fillStyle = ACCENT;
+      ctx.fillRect(W * 0.08, cy - 10, 12, 20);
+    }
+
+    // Status label inside the canvas
+    var fs = Math.max(20, Math.min(36, W / 22));
+    var label, col = TEXT, a = 1;
+    if (L < 0.15) { label = 'NO CARRIER'; col = STATUS; }
+    else if (L < 1.4) { label = 'DIALING'; }
+    else if (L < 3.2) { label = 'NEGOTIATING'; }
+    else { label = 'CARRIER DETECTED'; a = clamp((L - 3.2) / 0.3, 0, 1); }
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = fs + 'px "VT323", monospace';
+    ctx.globalAlpha = a;
+    ctx.fillStyle = col;
+    ctx.fillText(label, W / 2, H * 0.14);
+    ctx.globalAlpha = 1;
+
+    // Pointer trace: follows the pointer, never changes the signal
+    if (!REDUCED) {
+      var nowMs = now;
+      S.trail = S.trail.filter(function(p){ return nowMs - p.t < 900; });
+      ctx.fillStyle = TEXT;
+      S.trail.forEach(function(p){
+        ctx.globalAlpha = (1 - (nowMs - p.t) / 900) * 0.7;
+        ctx.fillRect(p.x - 1.5, p.y - 1.5, 3, 3);
+      });
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  function paintMini(m, now){
+    var c = m.ctx;
+    if (!c) return;
+    var t = REDUCED ? 0 : now / 1000;
+    var target = m.hot ? m.base + 2 : m.base;
+    m.f += (target - m.f) * (REDUCED ? 1 : 0.08);
+    c.setTransform(DPR, 0, 0, DPR, 0, 0);
+    c.clearRect(0, 0, m.w, m.h);
+    c.beginPath();
+    for (var i = 0; i <= 96; i++) {
+      var x = i / 96;
+      var y = m.h / 2 + m.h * 0.3 * Math.sin(2 * Math.PI * m.f * x + t * 2);
+      if (i === 0) c.moveTo(x * m.w, y); else c.lineTo(x * m.w, y);
+    }
+    c.strokeStyle = TEXT;
+    c.lineWidth = 1.4;
+    c.stroke();
+  }
+
+  function paint(now){
+    if (ctx) drawWave(now);
+    minis.forEach(function(m){ paintMini(m, now); });
+    updateClock();
+  }
+
+  function loop(now){
+    paint(now);
+    raf = requestAnimationFrame(loop);
+  }
+
+  // Pointer trace (mouse) and touch kick (phone)
+  scope.addEventListener('pointermove', function(e){
+    if (REDUCED || e.pointerType !== 'mouse') return;
+    var r = canvas.getBoundingClientRect();
+    S.trail.push({ x: e.clientX - r.left, y: e.clientY - r.top, t: performance.now() });
+    if (S.trail.length > 28) S.trail.shift();
+  });
+  scope.addEventListener('pointerdown', function(e){
+    if (e.pointerType === 'touch') S.kick = 1;
+  });
+
+  // Packages: choose a pack and a receipt
+  var picks = [].slice.call(document.querySelectorAll('[data-pick]'));
+  var picked = 5;
+  var selEl = document.getElementById('selected');
+  picks.forEach(function(btn){
+    btn.addEventListener('click', function(){
+      picked = +btn.getAttribute('data-pick');
+      selEl.textContent = (picked < 10 ? '0' : '') + picked + ' min';
+      picks.forEach(function(b){ b.setAttribute('aria-pressed', String(b === btn)); });
+    });
+  });
+
+  var out = document.getElementById('receipt-out');
+  function receiptText(min){
+    var d = new Date();
+    var p2 = function(n){ return (n < 10 ? '0' : '') + n; };
+    var rule = '----------------------------';
+    var no = String(1000 + Math.floor(Math.random() * 9000));
+    return [
+      'HOLD TONE SUPPLY',
+      'WAIT RECEIPT  No. ' + no,
+      rule,
+      'DATE    ' + d.getFullYear() + '-' + p2(d.getMonth() + 1) + '-' + p2(d.getDate()),
+      'TIME    ' + p2(d.getHours()) + ':' + p2(d.getMinutes()) + ':' + p2(d.getSeconds()),
+      'PACK    ' + p2(min) + ' MIN',
+      'CARRIER DETECTED',
+      'STATUS  CONNECTED',
+      rule,
+      'THANK YOU FOR WAITING'
+    ].join('\n');
+  }
+  document.getElementById('get-receipt').addEventListener('click', function(){
+    out.textContent = receiptText(picked);
+  });
+
+  // Scroll wiring
+  if (HAS_GSAP) {
+    gsap.registerPlugin(ScrollTrigger);
+    if (REDUCED) {
+      ScrollTrigger.create({
+        trigger: track, start: 'top top', end: 'bottom bottom',
+        onUpdate: function(self){ onProgress(self.progress); }
+      });
+    } else {
+      gsap.to(S, {
+        level: 4, ease: 'none',
+        scrollTrigger: {
+          trigger: track, start: 'top top', end: 'bottom bottom', scrub: 0.6,
+          onUpdate: function(self){ onProgress(self.progress); }
+        }
+      });
+    }
+  } else {
+    window.addEventListener('scroll', function(){
+      var r = track.getBoundingClientRect();
+      var total = track.offsetHeight - window.innerHeight;
+      var p = total > 0 ? clamp(-r.top / total, 0, 1) : 0;
+      if (!REDUCED) S.level = p * 4;
+      onProgress(p);
+    }, { passive: true });
+  }
+
+  window.addEventListener('resize', resize);
+  resize();
+  onProgress(0);
+  updateClock();
+  if (!REDUCED) raf = requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

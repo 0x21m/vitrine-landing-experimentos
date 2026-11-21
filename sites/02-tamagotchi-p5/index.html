@@ -1,0 +1,586 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Vigil Idle Co. — Idle-hour pet on an LCD</title>
+<meta name="description" content="Vigil Idle keeps one small creature alive on a grey screen, and it feeds on your absence.">
+<meta name="theme-color" content="#C5CFAE">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=VT323&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --fondo: #C5CFAE;
+    --superficie: #B3BF98;
+    --texto: #1B2416;
+    --acento: #3A4A2C;
+    --estado: #7A1F1F;
+    --gutter: max(16px, env(safe-area-inset-left, 0px));
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  * { margin: 0; padding: 0; }
+  [hidden] { display: none !important; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    background: #C5CFAE;
+    color: #1B2416;
+    font-family: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+    font-size: 16px;
+    line-height: 1.5;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+  img, canvas { max-width: 100%; }
+  a { color: inherit; }
+  button, input { font: inherit; }
+  .wrap { max-width: 1120px; margin: 0 auto; }
+  .skip { position: absolute; left: 16px; top: -48px; background: var(--acento); color: var(--fondo); padding: 8px 12px; z-index: 10; }
+  .skip:focus { top: 8px; }
+
+  h1, h2, .count, .btn, .plan-name, .plan-price, .tab, .readout { font-family: "VT323", "IBM Plex Mono", monospace; font-weight: 400; }
+  h1 { font-size: clamp(46px, 8vw, 100px); line-height: 0.95; overflow-wrap: anywhere; }
+  h2 { font-size: clamp(38px, 5.5vw, 68px); line-height: 1; overflow-wrap: anywhere; }
+  .eyebrow { font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--acento); font-weight: 500; margin-bottom: 14px; }
+  p { max-width: 62ch; }
+
+  /* header */
+  .site-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px 20px; padding: 18px 0; border-bottom: 2px solid var(--texto); }
+  .brand { font-family: "VT323", monospace; font-size: 30px; line-height: 1; text-decoration: none; }
+  .site-head nav { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; }
+  .site-head nav a { text-decoration: none; border-bottom: 2px solid transparent; }
+  .site-head nav a:hover, .site-head nav a:focus-visible { border-bottom-color: var(--texto); }
+
+  section { padding: 72px 0; border-bottom: 2px solid var(--texto); }
+  section:last-of-type { border-bottom: 0; }
+
+  /* hero */
+  .hero { display: grid; gap: 40px; align-items: center; padding: 56px 0 72px; grid-template-columns: 1fr; }
+  .hero .lede { margin-top: 20px; font-size: 18px; }
+  .hero .lede-2 { margin-top: 8px; font-size: 16px; }
+  .tagline { margin-top: 18px; font-size: 13px; letter-spacing: 0.04em; color: var(--acento); }
+  .cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 28px; }
+
+  /* visor */
+  .visor { width: 100%; max-width: 540px; justify-self: center; background: var(--superficie); border: 2px solid var(--texto); box-shadow: 6px 6px 0 var(--texto); padding: 14px; }
+  .screen { position: relative; aspect-ratio: 4 / 3; background: var(--fondo); border: 2px solid var(--texto); overflow: hidden; -webkit-font-smoothing: none; }
+  .screen::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(to bottom, rgba(27, 36, 22, 0.07) 0 1px, transparent 1px 3px); }
+  .screen img, .screen canvas { position: absolute; inset: 0; width: 100% !important; height: 100% !important; image-rendering: pixelated; image-rendering: crisp-edges; display: block; }
+  .readout { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-top: 12px; font-size: 26px; }
+  .readout .label { font-family: "IBM Plex Mono", monospace; font-size: 12px; letter-spacing: 0.12em; }
+  .count { font-size: clamp(40px, 6vw, 60px); line-height: 1; letter-spacing: 0.04em; }
+  [data-hunger] { font-family: "IBM Plex Mono", monospace; font-size: 12px; letter-spacing: 0.12em; font-weight: 500; }
+  [data-hunger].is-hungry { color: var(--estado); }
+
+  /* buttons */
+  .btn { display: inline-block; font-size: 26px; line-height: 1; padding: 10px 16px; background: var(--acento); color: var(--fondo); border: 2px solid var(--texto); text-decoration: none; cursor: pointer; }
+  .btn:hover { background: var(--texto); color: var(--fondo); }
+  .btn-ghost { background: transparent; color: var(--texto); }
+  .btn-ghost:hover { background: var(--superficie); color: var(--texto); }
+  .btn:focus-visible, .plan:focus-visible, .tab:focus-visible, input:focus-visible { outline: 3px solid var(--texto); outline-offset: 3px; }
+
+  /* what we sell */
+  .stats { list-style: none; display: grid; gap: 12px; margin-top: 32px; grid-template-columns: 1fr; }
+  .stats li { border: 2px solid var(--texto); padding: 14px 16px; font-size: 14px; background: var(--superficie); }
+  .stats b { display: block; font-family: "VT323", monospace; font-weight: 400; font-size: 48px; line-height: 1; }
+
+  /* feeding */
+  .feed { display: grid; gap: 40px; margin-top: 32px; grid-template-columns: 1fr; align-items: start; }
+  .menu { border-top: 2px solid var(--texto); }
+  .plan { display: grid; grid-template-columns: auto 1fr auto; gap: 4px 12px; align-items: baseline; width: 100%; text-align: left; background: transparent; color: inherit; border: 0; border-bottom: 2px solid var(--texto); padding: 16px 8px; cursor: pointer; }
+  .plan:hover, .plan:focus-visible { background: var(--superficie); }
+  .plan-name { font-size: 40px; line-height: 1; }
+  .dots { border-bottom: 2px dotted var(--texto); transform: translateY(-6px); min-width: 24px; }
+  .plan-price { font-size: 28px; line-height: 1; }
+  .plan-note { grid-column: 1 / -1; font-size: 14px; }
+  .plan-visor { width: 100%; max-width: 420px; justify-self: center; }
+  .plan-visor figcaption { font-size: 13px; margin-top: 10px; min-height: 1.5em; }
+
+  /* pinned visor */
+  #visor { display: flex; align-items: center; }
+  .pin-inner { display: grid; gap: 36px; width: 100%; grid-template-columns: 1fr; align-items: center; }
+  .pin-inner .visor { max-width: 640px; }
+
+  /* notes */
+  .notes { display: grid; gap: 16px; margin-top: 32px; grid-template-columns: 1fr; }
+  .notes blockquote { background: var(--superficie); border: 2px solid var(--texto); padding: 20px; }
+  .notes p { font-size: 16px; }
+  .notes cite { display: block; margin-top: 14px; font-size: 12px; font-style: normal; letter-spacing: 0.08em; text-transform: uppercase; }
+  .notes-row { display: grid; gap: 28px; align-items: center; margin-top: 40px; grid-template-columns: 1fr; }
+  .notes-row .visor { max-width: 380px; justify-self: start; }
+
+  /* firmware */
+  .tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 32px; }
+  .tab { font-size: 28px; line-height: 1; padding: 8px 14px; background: transparent; color: var(--texto); border: 2px solid var(--texto); cursor: pointer; }
+  .tab[aria-selected="true"] { background: var(--texto); color: var(--fondo); }
+  .tab:hover { background: var(--superficie); }
+  .tab[aria-selected="true"]:hover { background: var(--texto); }
+  .panel { border: 2px solid var(--texto); background: var(--superficie); padding: 22px; margin-top: 12px; min-height: 150px; }
+  .panel h3 { font-family: "VT323", monospace; font-weight: 400; font-size: 34px; line-height: 1; margin-bottom: 10px; }
+  .panel p { font-size: 16px; }
+  .panel .step { font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--acento); margin-bottom: 8px; }
+
+  /* sign up */
+  .signup-form { display: grid; gap: 14px; margin-top: 32px; max-width: 480px; }
+  .signup-form label { font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; }
+  .signup-form input { width: 100%; background: var(--superficie); color: var(--texto); border: 2px solid var(--texto); padding: 12px; font-size: 16px; border-radius: 0; }
+  .signup-form .btn { justify-self: start; cursor: pointer; }
+  .form-note, #signup-msg { font-size: 13px; }
+  #signup-msg { min-height: 1.5em; color: var(--acento); }
+
+  footer { padding: 32px 0 40px; border-top: 2px solid var(--texto); font-size: 13px; }
+  .template-notice { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; margin-top: 12px; color: var(--acento); }
+
+  /* wide screens */
+  @media (min-width: 769px) {
+    .hero { grid-template-columns: 1.05fr 0.95fr; }
+    .stats { grid-template-columns: repeat(3, 1fr); }
+    .feed { grid-template-columns: 1.1fr 0.9fr; }
+    .plan-visor { position: sticky; top: 24px; }
+    .notes { grid-template-columns: repeat(3, 1fr); }
+    .notes-row { grid-template-columns: 1fr 1fr; }
+    .pin-inner { grid-template-columns: 0.9fr 1.1fr; }
+    .pin-inner .intro { max-width: 40ch; }
+  }
+  @media (max-width: 380px) {
+    .site-head nav { font-size: 12px; }
+    .plan-name { font-size: 34px; }
+    .readout { font-size: 22px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+  }
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="wrap site-head">
+  <a class="brand" href="#top">Vigil Idle Co.</a>
+  <nav aria-label="Primary">
+    <a href="#sell">What we sell</a>
+    <a href="#feeding">Feeding schedule</a>
+    <a href="#visor">The counter</a>
+    <a href="#firmware">Firmware</a>
+    <a href="#signup">Sign up</a>
+  </nav>
+</header>
+
+<main id="main" class="wrap">
+
+  <section id="top" class="hero" aria-labelledby="hero-title">
+    <div class="hero-copy">
+      <p class="eyebrow">Vigil Idle Co. &middot; Absence Plan</p>
+      <h1 id="hero-title">Your pet only grows when you stop watching it.</h1>
+      <p class="lede">Vigil Idle keeps one small creature alive on a grey screen, and it feeds on your absence.</p>
+      <p class="lede-2">Every hour you leave it alone, it gets a little bigger.</p>
+      <p class="tagline">We keep your attention, so you don't have to.</p>
+      <div class="cta">
+        <a class="btn" href="#signup">Adopt a Lull</a>
+        <a class="btn btn-ghost" href="#firmware">How it counts</a>
+      </div>
+    </div>
+
+    <div class="visor" aria-label="Lull, a pixel pet on a grey LCD screen">
+      <div class="screen" id="hero-screen">
+        <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAAAwCAIAAAAuKetIAAAAoElEQVR42u3YsQmAMBCF4UxhY2vpBI7ghE5h4wBW1q5kQLAQITGn4SX88ISAFveRI5xxyzoVHeefbZ8LDQAAAAAAAAAAAIAPAG3XnPnpewAAAGQEXOvHiAJuZQWje4y+igogrXqVFrJUbzdYAfbqjQYAoVMy8i0AWgiAKmAYex9dQNAQA2CUYJirYZxO2AdpQIafSS62AAAAAABAPYCicwCAgOpDfh11MQAAAABJRU5ErkJggg==" width="64" height="48" alt="A small grey pixel creature on an LCD screen">
+      </div>
+      <div class="readout">
+        <span class="label">HOURS ABSENT</span>
+        <span class="count" data-count>0012</span>
+        <span data-hunger>FED</span>
+      </div>
+    </div>
+  </section>
+
+  <section id="sell" aria-labelledby="sell-title">
+    <p class="eyebrow">01 &middot; What we sell</p>
+    <h2 id="sell-title">We sell hours of not looking.</h2>
+    <p class="intro-copy" style="margin-top:20px">The Absence Plan is a monthly subscription for one Lull, a pet that lives on a pixel screen. It grows whenever nobody is watching it. The longer you stay away, the bigger it gets, and the higher your plan goes.</p>
+    <ul class="stats">
+      <li><b>1</b>Lull per plan</li>
+      <li><b>0</b>Notifications, ever</li>
+      <li><b>0</b>Buttons you have to press</li>
+    </ul>
+  </section>
+
+  <section id="feeding" aria-labelledby="feeding-title">
+    <p class="eyebrow">02 &middot; Feeding schedule</p>
+    <h2 id="feeding-title">Pick how hungry it gets.</h2>
+    <p style="margin-top:20px">Three feeding levels. Hover a plan, or tab to it, to see how big your Lull gets on that plan.</p>
+    <div class="feed">
+      <div class="menu">
+        <button class="plan" type="button" data-plan data-name="Peckish" data-size="0.35">
+          <span class="plan-name">Peckish</span>
+          <span class="dots" aria-hidden="true"></span>
+          <span class="plan-price">$9 / mo</span>
+          <span class="plan-note">Up to 8 absent hours a day. Stays about the size of a coin.</span>
+        </button>
+        <button class="plan" type="button" data-plan data-name="Hungry" data-size="0.65">
+          <span class="plan-name">Hungry</span>
+          <span class="dots" aria-hidden="true"></span>
+          <span class="plan-price">$19 / mo</span>
+          <span class="plan-note">Up to 20 absent hours a day. Grows ears, and a small grudge.</span>
+        </button>
+        <button class="plan" type="button" data-plan data-name="Forgotten" data-size="1">
+          <span class="plan-name">Forgotten</span>
+          <span class="dots" aria-hidden="true"></span>
+          <span class="plan-price">$29 / mo</span>
+          <span class="plan-note">Full absence. Fills the screen and never asks for anything.</span>
+        </button>
+      </div>
+      <figure class="plan-visor">
+        <div class="visor">
+          <div class="screen" id="preview-screen">
+            <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAAAwCAIAAAAuKetIAAAAoElEQVR42u3YsQmAMBCF4UxhY2vpBI7ghE5h4wBW1q5kQLAQITGn4SX88ISAFveRI5xxyzoVHeefbZ8LDQAAAAAAAAAAAIAPAG3XnPnpewAAAGQEXOvHiAJuZQWje4y+igogrXqVFrJUbzdYAfbqjQYAoVMy8i0AWgiAKmAYex9dQNAQA2CUYJirYZxO2AdpQIafSS62AAAAAABAPYCicwCAgOpDfh11MQAAAABJRU5ErkJggg==" width="64" height="48" alt="">
+          </div>
+        </div>
+        <figcaption id="preview-label" aria-live="polite">Hover a plan to preview it.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section id="visor" aria-labelledby="visor-title">
+    <div class="pin-inner">
+      <div class="intro">
+        <p class="eyebrow">04 &middot; The counter</p>
+        <h2 id="visor-title">Scroll slowly. Watch it turn.</h2>
+        <p style="margin-top:20px">Scroll the way you read, and the counter turns over like the odometer on an old device. Move the pointer over the screen to wake the Lull and set the count back to zero.</p>
+      </div>
+      <div class="visor">
+        <div class="screen" id="pin-screen">
+          <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAAAwCAIAAAAuKetIAAAAoElEQVR42u3YsQmAMBCF4UxhY2vpBI7ghE5h4wBW1q5kQLAQITGn4SX88ISAFveRI5xxyzoVHeefbZ8LDQAAAAAAAAAAAIAPAG3XnPnpewAAAGQEXOvHiAJuZQWje4y+igogrXqVFrJUbzdYAfbqjQYAoVMy8i0AWgiAKmAYex9dQNAQA2CUYJirYZxO2AdpQIafSS62AAAAAABAPYCicwCAgOpDfh11MQAAAABJRU5ErkJggg==" width="64" height="48" alt="">
+        </div>
+        <div class="readout">
+          <span class="label">HOURS ABSENT</span>
+          <span class="count" data-count>0012</span>
+          <span data-hunger>FED</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="notes" aria-labelledby="notes-title">
+    <p class="eyebrow">05 &middot; Customer notes</p>
+    <h2 id="notes-title">Three people who stopped checking.</h2>
+    <div class="notes">
+      <blockquote data-note>
+        <p>I left it alone for a whole weekend and it doubled in size. My phone buzzed the entire time. I did not miss a thing.</p>
+        <cite>Dana R., design lead</cite>
+      </blockquote>
+      <blockquote data-note>
+        <p>My calendar is a wall of meetings. The Lull is the only thing I own that gets better when I ignore it.</p>
+        <cite>Tomás M., operations manager</cite>
+      </blockquote>
+      <blockquote data-note>
+        <p>I thought it was a joke until the second month. It grew a tiny ear. I am quietly proud of it.</p>
+        <cite>Ines K., nurse</cite>
+      </blockquote>
+    </div>
+    <div class="notes-row">
+      <div class="visor">
+        <div class="screen" id="notes-screen">
+          <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAAAwCAIAAAAuKetIAAAAoElEQVR42u3YsQmAMBCF4UxhY2vpBI7ghE5h4wBW1q5kQLAQITGn4SX88ISAFveRI5xxyzoVHeefbZ8LDQAAAAAAAAAAAIAPAG3XnPnpewAAAGQEXOvHiAJuZQWje4y+igogrXqVFrJUbzdYAfbqjQYAoVMy8i0AWgiAKmAYex9dQNAQA2CUYJirYZxO2AdpQIafSS62AAAAAABAPYCicwCAgOpDfh11MQAAAABJRU5ErkJggg==" width="64" height="48" alt="">
+        </div>
+      </div>
+      <p>Each note you read lights a new pixel on the screen. Three notes, three pixels. Nobody has asked us for more.</p>
+    </div>
+  </section>
+
+  <section id="firmware" aria-labelledby="firmware-title">
+    <p class="eyebrow">06 &middot; Firmware</p>
+    <h2 id="firmware-title">Three menu steps, no buttons.</h2>
+    <p style="margin-top:20px">How the counter works. Use the arrow keys to move through the menu.</p>
+    <div class="tabs" role="tablist" aria-label="Firmware menu">
+      <button class="tab" type="button" role="tab" id="tab-sense" aria-controls="panel-sense" aria-selected="true" tabindex="0">SENSE</button>
+      <button class="tab" type="button" role="tab" id="tab-count" aria-controls="panel-count" aria-selected="false" tabindex="-1">COUNT</button>
+      <button class="tab" type="button" role="tab" id="tab-reset" aria-controls="panel-reset" aria-selected="false" tabindex="-1">RESET</button>
+    </div>
+    <div class="panel" role="tabpanel" id="panel-sense" aria-labelledby="tab-sense">
+      <p class="step">Step 1 of 3</p>
+      <h3>Sense</h3>
+      <p>The screen watches the pointer. If nothing moves over it for a while, the screen assumes nobody is looking, and the counter starts.</p>
+    </div>
+    <div class="panel" role="tabpanel" id="panel-count" aria-labelledby="tab-count" hidden>
+      <p class="step">Step 2 of 3</p>
+      <h3>Count</h3>
+      <p>Each stretch of absence adds to the hour counter. The Lull grows with the count. Past 48 hours, a red flag tells you it is hungry.</p>
+    </div>
+    <div class="panel" role="tabpanel" id="panel-reset" aria-labelledby="tab-reset" hidden>
+      <p class="step">Step 3 of 3</p>
+      <h3>Reset</h3>
+      <p>A pointer moving over the screen, or a tap on it, sets the counter to zero. The Lull shrinks and the screen flashes once to wake it.</p>
+    </div>
+  </section>
+
+  <section id="signup" aria-labelledby="signup-title">
+    <p class="eyebrow">07 &middot; Sign up</p>
+    <h2 id="signup-title">Adopt a Lull.</h2>
+    <p style="margin-top:20px">One pet, one monthly charge, no setup. Leave an email and we will send the manual, printed in grey.</p>
+    <form class="signup-form" id="signup-form" novalidate>
+      <label for="email">Email</label>
+      <input id="email" name="email" type="email" autocomplete="email" placeholder="you@somewhere.com" required>
+      <button class="btn" type="submit">Reserve my Lull</button>
+      <p class="form-note">This page does not store addresses yet.</p>
+      <p id="signup-msg" role="status" aria-live="polite"></p>
+    </form>
+  </section>
+
+</main>
+
+<footer class="wrap">
+  <p>Vigil Idle Co. &middot; We keep your attention, so you don't have to.</p>
+  <p id="template-notice" class="template-notice" hidden>Layout study: brand and copy are placeholders.</p>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/p5@2.3.4/lib/p5.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.15.1/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.15.1/dist/ScrollTrigger.min.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var W = 64, H = 48;
+  var FONDO = '#C5CFAE', SUPERFICIE = '#B3BF98', TEXTO = '#1B2416', ACENTO = '#3A4A2C', ESTADO = '#7A1F1F';
+
+  var state = { hours: reduce ? 24 : 12, hover: false, pinned: false, flashAt: -1000, preview: null, notes: 0 };
+  var visors = [];
+
+  function growth(h) { return Math.min(1, Math.sqrt(h / 120)); }
+  function flashing() { return !reduce && performance.now() - state.flashAt < 220; }
+
+  // One Lull frame on the 64 x 48 grid. Every cell is a p5 rect of 1 x 1.
+  function drawLull(p, g, t, notes, flash, hungry) {
+    var bg = flash ? TEXTO : FONDO;
+    var fg = flash ? FONDO : TEXTO;
+    var cx = 32, cy = 28;
+    var rx = 8 + 10 * g, ry = 6 + 7 * g, earH = Math.round(2 + 6 * g);
+    var blink = !reduce && (t % 4.2) < 0.18;
+    var period = 1 + 2 * g;               // belly blinks more slowly as it grows
+    var beat = reduce || (t % period) < period * 0.5;
+
+    p.background(bg);
+    p.fill(SUPERFICIE);
+    p.rect(0, 0, W, 1); p.rect(0, H - 1, W, 1); p.rect(0, 0, 1, H); p.rect(W - 1, 0, 1, H);
+
+    p.fill(fg);
+    for (var y = 0; y < H; y++) {
+      for (var x = 0; x < W; x++) {
+        var dx = (x + 0.5 - cx) / rx, dy = (y + 0.5 - cy) / ry;
+        if (dx * dx + dy * dy <= 1) p.rect(x, y, 1, 1);
+      }
+    }
+
+    var ex = Math.round(rx * 0.6), top = Math.round(cy - ry), bottom = Math.round(cy + ry), fx = Math.round(rx * 0.5);
+    p.rect(cx - ex - 1, top - earH, 3, earH + 1);
+    p.rect(cx + ex - 1, top - earH, 3, earH + 1);
+    p.rect(cx - fx - 1, bottom - 1, 3, 2);
+    p.rect(cx + fx - 1, bottom - 1, 3, 2);
+
+    var eo = Math.round(rx * 0.4), eyY = Math.round(cy - ry * 0.2);
+    p.fill(bg);
+    if (blink) {
+      p.rect(cx - eo - 1, eyY + 1, 2, 1);
+      p.rect(cx + eo - 1, eyY + 1, 2, 1);
+    } else {
+      p.rect(cx - eo - 1, eyY, 2, 2);
+      p.rect(cx + eo - 1, eyY, 2, 2);
+    }
+    if (beat) p.rect(cx - 1, Math.round(cy + ry * 0.35), 2, 2);
+
+    if (hungry) {
+      p.fill(ESTADO);
+      p.rect(3, 3, 1, 4);
+      p.rect(3, 8, 1, 1);
+    }
+
+    p.fill(flash ? FONDO : ACENTO);
+    for (var i = 0; i < notes && i < 60; i++) {
+      p.rect(2 + ((i * 3) % 60), H - 4 - Math.floor(i * 3 / 60) * 2, 1, 1);
+    }
+  }
+
+  function redrawAll() {
+    visors.forEach(function (v) { if (v.ready) v.p.redraw(); });
+  }
+
+  function renderCounters() {
+    var txt = String(Math.floor(state.hours)).padStart(4, '0');
+    document.querySelectorAll('[data-count]').forEach(function (el) { el.textContent = txt; });
+    var hungry = state.hours >= 48;
+    document.querySelectorAll('[data-hunger]').forEach(function (el) {
+      el.textContent = hungry ? 'HUNGRY' : 'FED';
+      el.classList.toggle('is-hungry', hungry);
+    });
+  }
+
+  function resetCounter() {
+    state.hours = 0;
+    state.flashAt = performance.now();
+    renderCounters();
+    redrawAll();
+  }
+
+  function makeVisor(el, getSize, interactive) {
+    var v = { p: null, ready: false };
+    visors.push(v);
+    if (typeof p5 === 'undefined' || !el) return v;
+
+    new p5(function (p) {
+      v.p = p;
+      p.setup = function () {
+        p.pixelDensity(1);
+        p.createCanvas(W, H);
+        p.noStroke();
+        p.frameRate(30);
+        var img = el.querySelector('img');
+        if (img) img.hidden = true;
+        if (reduce) p.noLoop();
+        v.ready = true;
+      };
+      p.draw = function () {
+        drawLull(p, getSize(), p.millis() / 1000, state.notes, flashing(), state.hours >= 48);
+      };
+    }, el);
+
+    if (interactive) {
+      el.addEventListener('pointerenter', function () { state.hover = true; resetCounter(); });
+      el.addEventListener('pointermove', function () { if (state.hours !== 0) resetCounter(); });
+      el.addEventListener('pointerleave', function () { state.hover = false; });
+      el.addEventListener('pointerdown', resetCounter);
+    }
+
+    // Pause the p5 loop while the visor is off screen.
+    if (!reduce && 'IntersectionObserver' in window) {
+      var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (e) {
+          if (!v.p) return;
+          if (e.isIntersecting) v.p.loop(); else v.p.noLoop();
+        });
+      });
+      io.observe(el);
+    }
+    return v;
+  }
+
+  makeVisor(document.getElementById('hero-screen'), function () { return growth(state.hours); }, true);
+  makeVisor(document.getElementById('pin-screen'), function () { return growth(state.hours); }, true);
+  makeVisor(document.getElementById('preview-screen'), function () { return state.preview == null ? 0.35 : state.preview; }, false);
+  makeVisor(document.getElementById('notes-screen'), function () { return 0.5; }, false);
+
+  // Idle growth: the counter rises while no pointer is over a visor and the page is not pinned.
+  var last = performance.now();
+  function tick(now) {
+    var dt = Math.min((now - last) / 1000, 0.1);
+    last = now;
+    if (!state.hover && !state.pinned) state.hours = Math.min(999, state.hours + dt * 0.25);
+    renderCounters();
+    requestAnimationFrame(tick);
+  }
+
+  // Scroll-linked counter: the pinned section turns the odometer as you scroll.
+  if (!reduce && window.gsap && window.ScrollTrigger) {
+    gsap.registerPlugin(ScrollTrigger);
+    ScrollTrigger.matchMedia({
+      '(min-width: 769px)': function () {
+        ScrollTrigger.create({
+          trigger: '#visor',
+          start: 'top top+=40',
+          end: '+=140%',
+          pin: true,
+          scrub: 0.5,
+          invalidateOnRefresh: true,
+          onToggle: function (self) { state.pinned = self.isActive; },
+          onUpdate: function (self) {
+            if (self.isActive) state.hours = Math.round(self.progress * 999);
+          }
+        });
+      }
+    });
+  }
+
+  // Feeding plans: hover or focus previews the Lull size for that plan.
+  var previewLabel = document.getElementById('preview-label');
+  document.querySelectorAll('[data-plan]').forEach(function (btn) {
+    var size = parseFloat(btn.getAttribute('data-size'));
+    var name = btn.getAttribute('data-name');
+    function on() { state.preview = size; previewLabel.textContent = 'Preview: ' + name; redrawAll(); }
+    function off() { state.preview = null; previewLabel.textContent = 'Hover a plan to preview it.'; redrawAll(); }
+    btn.addEventListener('pointerenter', on);
+    btn.addEventListener('pointerleave', off);
+    btn.addEventListener('focus', on);
+    btn.addEventListener('blur', off);
+  });
+
+  // Customer notes: each note read lights one new pixel on the notes screen.
+  var noteEls = document.querySelectorAll('[data-note]');
+  function light(el) {
+    if (el.getAttribute('data-lit')) return;
+    el.setAttribute('data-lit', '1');
+    state.notes = Math.min(state.notes + 1, 60);
+    redrawAll();
+  }
+  if ('IntersectionObserver' in window) {
+    var nio = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (e.isIntersecting) { light(e.target); nio.unobserve(e.target); }
+      });
+    }, { threshold: 0.8 });
+    noteEls.forEach(function (n) { nio.observe(n); });
+  } else {
+    noteEls.forEach(light);
+  }
+
+  // Firmware menu: arrow keys, Home and End move between the three steps.
+  var tabs = Array.prototype.slice.call(document.querySelectorAll('[role="tab"]'));
+  function selectTab(n, focus) {
+    tabs.forEach(function (t, j) {
+      var on = j === n;
+      t.setAttribute('aria-selected', on ? 'true' : 'false');
+      t.tabIndex = on ? 0 : -1;
+      var panel = document.getElementById(t.getAttribute('aria-controls'));
+      if (panel) panel.hidden = !on;
+    });
+    if (focus) tabs[n].focus();
+  }
+  tabs.forEach(function (t, i) {
+    t.addEventListener('click', function () { selectTab(i, false); });
+    t.addEventListener('keydown', function (e) {
+      var n;
+      if (e.key === 'ArrowDown' || e.key === 'ArrowRight') n = (i + 1) % tabs.length;
+      else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') n = (i - 1 + tabs.length) % tabs.length;
+      else if (e.key === 'Home') n = 0;
+      else if (e.key === 'End') n = tabs.length - 1;
+      else return;
+      e.preventDefault();
+      selectTab(n, true);
+    });
+  });
+
+  // Sign up: no data is collected in this version, so the form only answers locally.
+  var form = document.getElementById('signup-form');
+  var msg = document.getElementById('signup-msg');
+  if (form) {
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      msg.textContent = 'Thanks. This page does not store addresses yet, so nothing was sent.';
+    });
+  }
+
+  // Template notice: shown only when the build sets window.TEMPLATE_NOTICE to true.
+  if (window.TEMPLATE_NOTICE === true) {
+    var tn = document.getElementById('template-notice');
+    if (tn) tn.hidden = false;
+  }
+
+  renderCounters();
+  redrawAll();
+  if (!reduce) requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>

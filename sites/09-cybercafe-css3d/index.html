@@ -1,0 +1,736 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Linha Ocupada — Dial-up Internet Café</title>
+<meta name="description" content="Dial-up booths for people who want to wait. Billed by the minute.">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&family=VT323&display=swap">
+<style>
+:root {
+  --bg: #E8E2CF;
+  --surface: #C7BFA6;
+  --text: #1E2A1E;
+  --accent: #3FAF5A;
+  --status: #B3412E;
+  --shade: rgba(30, 42, 30, 0.3);
+  --gap-x: clamp(100px, 16vw, 210px);
+}
+
+* { box-sizing: border-box; }
+
+html { background: var(--bg); }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Courier Prime", "Courier New", monospace;
+  font-size: 17px;
+  line-height: 1.55;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-bottom: max(24px, env(safe-area-inset-bottom, 0px));
+  overflow-wrap: break-word;
+}
+
+/* scanlines over the whole screen */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 100;
+  background: repeating-linear-gradient(to bottom, rgba(30, 42, 30, 0.07) 0 1px, transparent 1px 3px);
+}
+
+header, main, footer { overflow-x: clip; }
+
+h1, h2, h3 {
+  font-family: "VT323", monospace;
+  font-weight: 400;
+  line-height: 0.95;
+  margin: 0;
+}
+h2 { font-size: clamp(2.6rem, 7vw, 4.6rem); margin-bottom: 18px; }
+h3 { font-size: 2.1rem; margin-bottom: 8px; }
+
+p { margin: 0 0 12px; }
+
+section { padding: 56px 0; }
+.wrap { max-width: 1040px; margin: 0 auto; }
+.eyebrow { font-size: 15px; margin: 0 0 8px; letter-spacing: 0.08em; text-transform: uppercase; }
+
+/* top bar */
+.top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 20px;
+  padding: 18px 0;
+  border-bottom: 2px solid var(--text);
+}
+.brand {
+  font-family: "VT323", monospace;
+  font-size: 34px;
+  line-height: 1;
+  color: var(--text);
+  text-decoration: none;
+}
+.top nav { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 15px; }
+.top nav a { color: var(--text); text-decoration: none; border-bottom: 2px solid transparent; }
+.top nav a:hover, .top nav a:focus-visible { border-bottom-color: var(--text); }
+
+/* hero */
+.hero { padding-top: 40px; padding-bottom: 24px; }
+.hero h1 { font-size: clamp(3.6rem, 13vw, 9rem); line-height: 0.88; max-width: 12ch; }
+.lede { font-size: 1.2rem; margin: 18px 0 12px; max-width: 40ch; }
+.hero-note {
+  display: inline-block;
+  background: var(--text);
+  color: var(--accent);
+  font-family: "VT323", monospace;
+  font-size: 1.6rem;
+  line-height: 1.1;
+  padding: 4px 12px;
+  margin: 0;
+}
+
+/* CSS 3D room: perspective on .room, preserve-3d on the planes */
+.room {
+  position: relative;
+  height: 340px;
+  perspective: 1100px;
+  perspective-origin: 50% 40%;
+  margin-top: 28px;
+}
+.tilt {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  transform: rotateX(var(--tx, 0deg)) rotateY(var(--ty, 0deg));
+  transition: transform 0.4s ease-out;
+}
+.room-stage { position: absolute; inset: 0; transform-style: preserve-3d; }
+
+.room .unit,
+.booth-stage .unit {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  transform-style: preserve-3d;
+}
+.room .unit {
+  --w: clamp(120px, 13vw, 176px);
+  --h: calc(var(--w) * 0.9);
+  --d: calc(var(--w) * 0.8);
+  transform: translate3d(calc((var(--i) - 2) * var(--gap-x)), 0, var(--z, 0px));
+}
+@media (min-width: 768px) {
+  .room .screen span { font-size: clamp(14px, 1.5vw, 20px); }
+}
+.booth-stage .unit {
+  --w: 124px;
+  --h: 98px;
+  --d: 84px;
+  transform: rotateY(-14deg);
+  transition: transform 0.5s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+@media (hover: hover) {
+  .booth:hover .booth-stage .unit { transform: translateZ(46px) rotateY(0deg); }
+}
+
+/* planes of one unit: screen face, two sides, desk */
+.face { position: absolute; left: 50%; top: 50%; }
+.face.front {
+  width: var(--w);
+  height: var(--h);
+  margin: calc(var(--h) / -2) 0 0 calc(var(--w) / -2);
+  transform: translateZ(calc(var(--d) / 2));
+  background: var(--surface);
+  border-radius: 18px / 14px;
+  padding: 14px;
+  box-shadow: inset 3px 3px 0 var(--bg), inset -3px -3px 0 var(--shade);
+}
+.face.side,
+.face.lside {
+  width: var(--d);
+  height: var(--h);
+  margin: calc(var(--h) / -2) 0 0 calc(var(--d) / -2);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 999px var(--shade);
+}
+.face.side { transform: rotateY(90deg) translateZ(calc(var(--w) / 2)); }
+.face.lside { transform: rotateY(-90deg) translateZ(calc(var(--w) / 2)); }
+.face.base {
+  width: var(--w);
+  height: var(--d);
+  margin: calc(var(--d) / -2) 0 0 calc(var(--w) / -2);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 999px var(--shade);
+  transform: rotateX(90deg) translateZ(calc(var(--h) / -2));
+}
+
+/* the tube */
+.screen {
+  position: absolute;
+  inset: 14px 14px 22px;
+  background: var(--text);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  overflow: hidden;
+}
+.screen::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(to bottom, transparent 0 2px, rgba(63, 175, 90, 0.14) 2px 3px);
+}
+.screen span {
+  font-family: "VT323", monospace;
+  color: var(--accent);
+  font-size: 28px;
+  line-height: 1;
+  letter-spacing: 0.05em;
+  text-align: center;
+}
+.cursor {
+  display: inline-block;
+  width: 0.5em;
+  height: 0.9em;
+  background: var(--accent);
+  vertical-align: -0.1em;
+  margin-left: 4px;
+  animation: blink 1s steps(1) infinite;
+}
+.dial { width: 72%; height: 16px; border: 2px solid var(--accent); padding: 2px; }
+.dial-bar {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transform-origin: 0 50%;
+  transform: scaleX(0.92);
+}
+
+/* booths */
+.booth-stage { position: relative; height: 176px; perspective: 700px; margin-bottom: 12px; }
+.booth-stage .screen span { font-size: 22px; }
+.booth-stage .s-hover { display: none; }
+@media (hover: hover) {
+  .booth:hover .s-idle { display: none; }
+  .booth:hover .s-hover { display: block; }
+}
+
+/* how it works */
+.printer {
+  position: relative;
+  max-width: 520px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface);
+  box-shadow: inset 3px 3px 0 var(--bg), inset -3px -3px 0 var(--shade), 4px 4px 0 var(--text);
+  font-family: "VT323", monospace;
+  font-size: 26px;
+  margin-bottom: 36px;
+}
+.printer::after {
+  content: "";
+  position: absolute;
+  left: 12%;
+  right: 12%;
+  bottom: -10px;
+  height: 8px;
+  background: var(--text);
+}
+.lead { max-width: 60ch; }
+.papers {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 22px;
+}
+.paper {
+  background-color: var(--bg);
+  background-image: repeating-linear-gradient(to bottom, transparent 0 31px, rgba(63, 175, 90, 0.4) 31px 32px);
+  border: 2px solid var(--text);
+  box-shadow: 4px 4px 0 var(--text);
+  padding: 22px 20px 24px;
+}
+.paper .no { font-size: 15px; display: block; margin-bottom: 4px; }
+
+/* booth list */
+.booth-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 28px;
+}
+.booth {
+  background: var(--bg);
+  border: 2px solid var(--text);
+  box-shadow: 4px 4px 0 var(--text);
+  padding: 18px;
+}
+.booth p { margin: 0; }
+
+/* rates, drawn as a cybercafé form */
+.form {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--surface);
+  border: 2px solid var(--text);
+  box-shadow: 4px 4px 0 var(--text);
+}
+.form caption {
+  text-align: left;
+  font-family: "VT323", monospace;
+  font-size: 28px;
+  line-height: 1;
+  padding: 12px 14px;
+}
+.form th,
+.form td {
+  padding: 12px 14px;
+  text-align: left;
+  vertical-align: middle;
+  border-top: 2px solid var(--shade);
+  font-weight: 400;
+}
+.field {
+  display: inline-block;
+  background: var(--text);
+  color: var(--accent);
+  font-family: "VT323", monospace;
+  font-size: 26px;
+  line-height: 1;
+  padding: 5px 10px;
+}
+.rates-note { margin-top: 16px; font-size: 15px; }
+
+/* mailbox */
+.mail {
+  max-width: 720px;
+  background: var(--surface);
+  border: 2px solid var(--text);
+  box-shadow: 4px 4px 0 var(--text);
+  padding: 20px;
+}
+.mail label { display: block; font-size: 15px; margin-bottom: 8px; }
+.mail textarea {
+  display: block;
+  width: 100%;
+  min-height: 160px;
+  font: 17px/1.5 "Courier Prime", "Courier New", monospace;
+  color: var(--text);
+  background: var(--bg);
+  border: 2px solid var(--text);
+  box-shadow: inset 3px 3px 0 var(--shade);
+  padding: 12px;
+  resize: vertical;
+}
+.btn {
+  font-family: "VT323", monospace;
+  font-size: 26px;
+  line-height: 1;
+  color: var(--text);
+  background: var(--bg);
+  border: 2px solid var(--text);
+  box-shadow: 3px 3px 0 var(--text);
+  padding: 8px 22px;
+  margin-top: 14px;
+  cursor: pointer;
+}
+.btn:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--text); }
+.btn:focus-visible { outline: 3px solid var(--status); outline-offset: 3px; }
+.busy {
+  font-family: "VT323", monospace;
+  font-size: 44px;
+  line-height: 1;
+  color: var(--status);
+  min-height: 1em;
+  margin: 14px 0 0;
+}
+.busy.flash { animation: blink 0.5s steps(1) 4; }
+
+/* footer */
+.foot {
+  border-top: 2px solid var(--text);
+  padding-top: 28px;
+  display: grid;
+  gap: 6px;
+  font-size: 15px;
+}
+.foot strong { font-family: "VT323", monospace; font-weight: 400; font-size: 1.9rem; line-height: 1; }
+.notice {
+  font-family: "VT323", monospace;
+  font-size: 14px;
+  line-height: 1.2;
+  color: var(--text);
+  opacity: 0.6;
+  margin: 18px 0 0;
+}
+
+@keyframes blink { 50% { opacity: 0; } }
+
+@media (min-width: 768px) {
+  .papers { grid-template-columns: repeat(3, 1fr); }
+  .booth-list { grid-template-columns: repeat(3, 1fr); }
+}
+
+/* phone width and browsers without preserve-3d: the room becomes a flat column */
+@media (max-width: 767px) {
+  .room { height: auto; perspective: none; }
+  .tilt, .room-stage {
+    position: relative;
+    inset: auto;
+    transform: none !important;
+    transform-style: flat;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .room .unit,
+  .booth-stage .unit {
+    position: relative;
+    left: auto;
+    top: auto;
+    width: 100%;
+    height: auto;
+    transform: none !important;
+    transform-style: flat;
+  }
+  .booth-stage { height: auto; perspective: none; }
+  .face { position: relative; left: auto; top: auto; margin: 0 !important; transform: none !important; }
+  .face.front { width: 100%; height: 110px; }
+  .face.side, .face.lside, .face.base { display: none; }
+}
+@supports not (transform-style: preserve-3d) {
+  .room { height: auto; perspective: none; }
+  .tilt, .room-stage {
+    position: relative;
+    inset: auto;
+    transform: none !important;
+    transform-style: flat;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .room .unit,
+  .booth-stage .unit {
+    position: relative;
+    left: auto;
+    top: auto;
+    width: 100%;
+    height: auto;
+    transform: none !important;
+    transform-style: flat;
+  }
+  .booth-stage { height: auto; perspective: none; }
+  .face { position: relative; left: auto; top: auto; margin: 0 !important; transform: none !important; }
+  .face.front { width: 100%; height: 110px; }
+  .face.side, .face.lside, .face.base { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+  .tilt { transform: none !important; }
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <a class="brand" href="#room">Linha Ocupada</a>
+  <nav aria-label="Main">
+    <a href="#how">How it works</a>
+    <a href="#booths">Booths</a>
+    <a href="#rates">Rates</a>
+    <a href="#mailbox">Mailbox</a>
+  </nav>
+</header>
+
+<main>
+
+<section class="hero" id="room" aria-labelledby="hero-title">
+  <div class="wrap">
+    <h1 id="hero-title">The line is busy. Good.</h1>
+    <p class="lede">Dial-up booths for people who want to wait.</p>
+    <p><span class="hero-note">Thirty minutes of handshake, billed by the minute.</span></p>
+
+    <div class="room" aria-hidden="true">
+      <div class="tilt">
+        <div class="room-stage">
+          <div class="unit" style="--i:0">
+            <div class="face front"><div class="screen"><span>CONNECTING...<i class="cursor"></i></span></div></div>
+            <div class="face side"></div><div class="face lside"></div><div class="face base"></div>
+          </div>
+          <div class="unit" style="--i:1">
+            <div class="face front"><div class="screen"><span>CONNECTING...<i class="cursor"></i></span></div></div>
+            <div class="face side"></div><div class="face lside"></div><div class="face base"></div>
+          </div>
+          <div class="unit" style="--i:2">
+            <div class="face front"><div class="screen"><span>CONNECTING...<i class="cursor"></i></span></div></div>
+            <div class="face side"></div><div class="face lside"></div><div class="face base"></div>
+          </div>
+          <div class="unit" style="--i:3">
+            <div class="face front"><div class="screen"><span>CONNECTING...<i class="cursor"></i></span></div></div>
+            <div class="face side"></div><div class="face lside"></div><div class="face base"></div>
+          </div>
+          <div class="unit" style="--i:4; --z:120px">
+            <div class="face front">
+              <div class="screen">
+                <span>CONNECTING...</span>
+                <div class="dial"><div class="dial-bar"></div></div>
+                <span class="dial-label">DIALING 92%</span>
+              </div>
+            </div>
+            <div class="face side"></div><div class="face lside"></div><div class="face base"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="how" aria-labelledby="how-title">
+  <div class="wrap">
+    <p class="eyebrow">02 / Billing</p>
+    <h2 id="how-title">You pay for the wait</h2>
+    <p class="lead">Every booth is rented by the minute. The line stays busy for the whole session, so you never get through and nobody gets through to you.</p>
+    <div class="printer" aria-hidden="true">DOT-MATRIX PRINTER · LINE 1</div>
+    <ol class="papers">
+      <li class="paper">
+        <span class="no">01</span>
+        <h3>Dial</h3>
+        <p>The modem starts the handshake and the tone plays. It does not finish, and that is the point.</p>
+      </li>
+      <li class="paper">
+        <span class="no">02</span>
+        <h3>Wait</h3>
+        <p>Billing runs by the minute while the line stays busy. No ringing, no notifications, no news.</p>
+      </li>
+      <li class="paper">
+        <span class="no">03</span>
+        <h3>Leave</h3>
+        <p>When your time runs out, the line hangs up on its own. Nothing was sent. Your receipt is the only thing you keep.</p>
+      </li>
+    </ol>
+  </div>
+</section>
+
+<section id="booths" aria-labelledby="booths-title">
+  <div class="wrap">
+    <p class="eyebrow">03 / Booths</p>
+    <h2 id="booths-title">Three ways to wait</h2>
+    <ul class="booth-list">
+      <li class="booth reveal">
+        <div class="booth-stage">
+          <div class="unit">
+            <div class="face front"><div class="screen"><span class="s-idle">HANDSHAKE</span><span class="s-hover">TRYING...</span></div></div>
+            <div class="face side"></div><div class="face lside"></div><div class="face base"></div>
+          </div>
+        </div>
+        <h3>Handshake Booth</h3>
+        <p>Thirty minutes of the modem trying to connect. The tone rings and never resolves. Nobody answers, and nobody hangs up.</p>
+      </li>
+      <li class="booth reveal">
+        <div class="booth-stage">
+          <div class="unit">
+            <div class="face front"><div class="screen"><span class="s-idle">MAILBOX</span><span class="s-hover">0 SENT</span></div></div>
+            <div class="face side"></div><div class="face lside"></div><div class="face base"></div>
+          </div>
+        </div>
+        <h3>Mailbox Booth</h3>
+        <p>Write a message on a glowing screen. It stays there. It is never sent, and no one can reply.</p>
+      </li>
+      <li class="booth reveal">
+        <div class="booth-stage">
+          <div class="unit">
+            <div class="face front"><div class="screen"><span class="s-idle">EMPTY</span><span class="s-hover">0 USERS</span></div></div>
+            <div class="face side"></div><div class="face lside"></div><div class="face base"></div>
+          </div>
+        </div>
+        <h3>Empty Chat Room</h3>
+        <p>A chat room with a blinking cursor and no one else in it. You can type for as long as the line lets you.</p>
+      </li>
+    </ul>
+  </div>
+</section>
+
+<section id="rates" aria-labelledby="rates-title">
+  <div class="wrap">
+    <p class="eyebrow">04 / Rates</p>
+    <h2 id="rates-title">Rates by the minute</h2>
+    <p class="lead">You pay for each minute you spend waiting. Rounding goes up, never down. Nothing here finishes, so nothing is refunded.</p>
+    <table class="form reveal">
+      <caption>Rate card, per minute</caption>
+      <tbody>
+        <tr><th scope="row">Handshake Booth</th><td><span class="field">3.00 per minute</span></td></tr>
+        <tr><th scope="row">Mailbox Booth</th><td><span class="field">2.00 per minute</span></td></tr>
+        <tr><th scope="row">Empty Chat Room</th><td><span class="field">1.50 per minute</span></td></tr>
+        <tr><th scope="row">Minimum session</th><td><span class="field">30 minutes</span></td></tr>
+        <tr><th scope="row">Rounding</th><td><span class="field">Up, to the next minute</span></td></tr>
+      </tbody>
+    </table>
+    <p class="rates-note">Rates are shown for information. Sessions start when the line is free.</p>
+  </div>
+</section>
+
+<section id="mailbox" aria-labelledby="mailbox-title">
+  <div class="wrap">
+    <p class="eyebrow">05 / Mailbox</p>
+    <h2 id="mailbox-title">Leave a message</h2>
+    <p class="lead">Write what you want. It stays on the screen. Nothing you type leaves this browser, and nothing will be sent.</p>
+    <div class="mail reveal">
+      <label for="msg">Your message</label>
+      <textarea id="msg" rows="6" placeholder="Type here. The line is busy."></textarea>
+      <button type="button" class="btn" id="send">Send</button>
+      <p class="busy" id="busy" role="status" aria-live="polite"></p>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="wrap foot">
+  <strong>Linha Ocupada</strong>
+  <p>Room 0, 14 Dial Tone Lane, at the back of the hall.</p>
+  <p>Contact: ring the bell on the door.</p>
+  <p>Open when the line is free.</p>
+  <p class="notice" lang="pt-BR">Template: nome, endereço e preços são provisórios de construção.</p>
+</footer>
+
+<script>
+(function () {
+  'use strict';
+  var GSAP_SRC = 'https://cdnjs.cloudflare.com/ajax/libs/gsap/3.15.1/gsap.min.js';
+  var ST_SRC = 'https://cdnjs.cloudflare.com/ajax/libs/gsap/3.15.1/ScrollTrigger.min.js';
+
+  var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
+  var wide = window.matchMedia('(min-width: 768px)');
+  var fine = window.matchMedia('(hover: hover) and (pointer: fine)');
+  var room = document.querySelector('.room');
+  var tilt = document.querySelector('.tilt');
+  var stage = document.querySelector('.room-stage');
+  var hero = document.querySelector('#room');
+  var bar = document.querySelector('.dial-bar');
+  var label = document.querySelector('.dial-label');
+  var send = document.getElementById('send');
+  var busy = document.getElementById('busy');
+
+  // Mailbox: shows the busy notice only. Nothing is sent anywhere.
+  if (send && busy) {
+    send.addEventListener('click', function () {
+      busy.textContent = 'LINE BUSY';
+      busy.classList.remove('flash');
+      void busy.offsetWidth;
+      busy.classList.add('flash');
+    });
+  }
+
+  // Pointer tilt for the room: at most 4 degrees, desktop with a fine pointer.
+  if (!reduce.matches && wide.matches && fine.matches && room && tilt) {
+    var clamp = function (v) { return Math.max(-4, Math.min(4, v)); };
+    room.addEventListener('pointermove', function (e) {
+      var r = room.getBoundingClientRect();
+      var nx = (e.clientX - r.left) / r.width - 0.5;
+      var ny = (e.clientY - r.top) / r.height - 0.5;
+      tilt.style.setProperty('--ty', clamp(nx * 8).toFixed(2) + 'deg');
+      tilt.style.setProperty('--tx', clamp(-ny * 8).toFixed(2) + 'deg');
+    });
+    room.addEventListener('pointerleave', function () {
+      tilt.style.setProperty('--tx', '0deg');
+      tilt.style.setProperty('--ty', '0deg');
+    });
+  }
+
+  // Reduced motion: GSAP is not loaded; the page stays in its final state.
+  if (reduce.matches) return;
+
+  function loadScript(src) {
+    return new Promise(function (resolve, reject) {
+      var s = document.createElement('script');
+      s.src = src;
+      s.onload = resolve;
+      s.onerror = reject;
+      document.head.appendChild(s);
+    });
+  }
+
+  function paintDial(p) {
+    if (!bar || !label) return;
+    bar.style.transform = 'scaleX(' + (p / 100).toFixed(3) + ')';
+    label.textContent = 'DIALING ' + Math.round(p) + '%';
+  }
+
+  function init() {
+    gsap.registerPlugin(ScrollTrigger);
+
+    // Room rotates with the scroll through the hero (desktop only).
+    if (wide.matches && stage && hero) {
+      gsap.fromTo(stage, { rotationY: 0 }, {
+        rotationY: -32,
+        ease: 'none',
+        scrollTrigger: { trigger: hero, start: 'top top', end: 'bottom top', scrub: true }
+      });
+    }
+
+    // Dial bar fills with the scroll and stops at 92%, never 100%.
+    var dial = { p: 0 };
+    paintDial(0);
+    if (bar && label && hero) {
+      gsap.to(dial, {
+        p: 92,
+        ease: 'none',
+        scrollTrigger: { trigger: hero, start: 'top top', end: 'bottom top', scrub: true },
+        onUpdate: function () { paintDial(dial.p); }
+      });
+    }
+
+    // Paper cards come out of the printer one at a time.
+    gsap.from('.paper', {
+      clipPath: 'inset(0% 0% 100% 0%)',
+      y: -28,
+      opacity: 0,
+      duration: 0.9,
+      ease: 'steps(8)',
+      stagger: 0.12,
+      scrollTrigger: { trigger: '.printer', start: 'top 85%', once: true }
+    });
+
+    // Section entrances.
+    document.querySelectorAll('.reveal').forEach(function (el) {
+      gsap.from(el, {
+        y: 24,
+        opacity: 0,
+        duration: 0.7,
+        ease: 'power2.out',
+        scrollTrigger: { trigger: el, start: 'top 90%', once: true }
+      });
+    });
+
+    window.addEventListener('load', function () { ScrollTrigger.refresh(); });
+  }
+
+  loadScript(GSAP_SRC)
+    .then(function () { return loadScript(ST_SRC); })
+    .then(init)
+    .catch(function () { /* CDN unavailable: the static page stays as it is */ });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,503 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pausa Alugada — Flip Clock Pauses</title>
+<meta name="description" content="Pausa Alugada sells twenty-minute pauses with no agenda, no notifications and no one waiting for a reply.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.15.1/gsap.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.15.1/ScrollTrigger.min.js"></script>
+<style>
+:root{
+  --bg:#1B1A17;
+  --surface:#2A2824;
+  --text:#F2EADB;
+  --accent:#FF8A3D;
+  --status:#7FD18B;
+  --muted:rgba(242,234,219,.66);
+  --rule:rgba(242,234,219,.14);
+  --font-display:"Big Shoulders Display","Arial Narrow",Impact,sans-serif;
+  --font-text:"Space Mono",ui-monospace,Menlo,Consolas,monospace;
+  --noise:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .14 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;background:var(--bg)}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--text);
+  font:400 16px/1.6 var(--font-text);
+  overflow-x:clip;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));
+  padding-right:max(16px, env(safe-area-inset-right, 0px));
+}
+img,svg{max-width:100%}
+a{color:var(--accent);text-underline-offset:4px}
+a:focus-visible{outline:2px solid var(--accent);outline-offset:4px}
+h1,h2,h3,p{margin:0}
+.wrap{max-width:1180px;margin:0 auto}
+.eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.display{font-family:var(--font-display);font-weight:900;text-transform:uppercase;line-height:.92;letter-spacing:-.01em}
+
+/* nav */
+.nav{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:18px 0;border-bottom:1px solid var(--rule);font-size:13px;letter-spacing:.06em}
+.nav strong{font-family:var(--font-display);font-weight:800;font-size:20px;letter-spacing:.04em;text-transform:uppercase}
+.nav ul{display:flex;gap:18px;list-style:none;margin:0;padding:0;flex-wrap:wrap;justify-content:flex-end}
+.nav a{color:var(--text);text-decoration:none}
+.nav a:hover{color:var(--accent)}
+
+/* hero + clock */
+#hero{position:relative}
+.pinned #hero{height:240vh}
+.stage{position:relative;min-height:100vh;min-height:100svh;display:flex;flex-direction:column;justify-content:center;gap:clamp(20px,4vh,40px);padding:32px 0 48px}
+.pinned .stage{position:sticky;top:0;height:100vh;height:100svh;min-height:0;overflow:hidden}
+.clock-wrap{perspective:900px;display:flex;justify-content:center;padding:8px 0}
+.clock{
+  display:flex;align-items:center;gap:clamp(4px,1vw,10px);
+  transform-style:preserve-3d;
+  transform:rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg));
+  transition:transform .45s ease-out;
+}
+.cell{position:relative;width:clamp(44px,12vw,118px);aspect-ratio:100/140;transform-style:preserve-3d}
+.cell svg{width:100%;height:100%;display:block;overflow:visible}
+.face{fill:var(--surface)}
+.t{fill:var(--text);font-family:var(--font-display);font-weight:900;font-size:124px}
+.seam{fill:var(--bg)}
+.shade{pointer-events:none}
+.fl-top,.fl-bot{opacity:0}
+.colon{display:flex;flex-direction:column;gap:clamp(18px,3.4vw,34px);width:clamp(8px,1.6vw,14px);align-items:center}
+.colon i{display:block;width:clamp(7px,1.3vw,11px);height:clamp(7px,1.3vw,11px);background:var(--accent);border-radius:50%;animation:blink 2.4s steps(2,jump-none) infinite}
+.colon i:nth-child(2){animation-delay:1.2s}
+@keyframes blink{0%{opacity:1}50%{opacity:.15}100%{opacity:1}}
+
+.status{display:flex;justify-content:center;gap:clamp(18px,4vw,48px);flex-wrap:wrap;font-size:13px;letter-spacing:.12em;text-transform:uppercase}
+.status div{display:flex;flex-direction:column;align-items:center;gap:2px}
+.status span.label{color:var(--muted);font-size:11px}
+.status span.val{font-family:var(--font-display);font-weight:800;font-size:clamp(1.6rem,4vw,2.4rem);letter-spacing:.02em;line-height:1}
+.status .live{color:var(--status)}
+
+.hero-copy{text-align:center;display:flex;flex-direction:column;align-items:center;gap:14px;max-width:880px;margin:0 auto}
+.hero-copy h1{font-size:clamp(2.2rem,7.4vw,6.2rem)}
+.hero-copy p.line{font-size:clamp(15px,1.6vw,18px);color:var(--text)}
+.hero-copy p.brand{font-family:var(--font-display);font-weight:800;text-transform:uppercase;font-size:clamp(1.2rem,2.6vw,1.8rem);letter-spacing:.04em;color:var(--accent)}
+.hint{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+
+/* sections */
+section.block{padding:clamp(72px,12vw,140px) 0;border-top:1px solid var(--rule)}
+.block h2{font-family:var(--font-display);font-weight:900;text-transform:uppercase;font-size:clamp(2.1rem,6vw,4.6rem);line-height:.94;margin-bottom:clamp(28px,4vw,48px);max-width:14ch}
+.block .lede{max-width:52ch;color:var(--muted);margin-top:18px}
+
+.steps{display:grid;gap:16px;grid-template-columns:1fr;list-style:none;padding:0;margin:0}
+@media (min-width:820px){.steps{grid-template-columns:repeat(3,1fr)}}
+.step{background:var(--surface);padding:24px;display:flex;flex-direction:column;gap:18px}
+.mini{position:relative;height:118px;background:var(--bg);display:flex;align-items:center;justify-content:center;overflow:hidden}
+.mini span{font-family:var(--font-display);font-weight:900;font-size:76px;line-height:1;color:var(--text)}
+.mini::after{content:"";position:absolute;left:0;right:0;top:50%;height:2px;background:var(--bg);box-shadow:0 1px 0 rgba(0,0,0,.4)}
+.step h3{font-family:var(--font-display);font-weight:800;text-transform:uppercase;font-size:1.7rem;line-height:1}
+.step p{color:var(--muted);font-size:15px}
+
+/* card */
+.card-area{display:grid;gap:clamp(32px,6vw,72px);align-items:center;grid-template-columns:1fr}
+@media (min-width:900px){.card-area{grid-template-columns:1.1fr .9fr}}
+.card{
+  position:relative;
+  background-color:var(--text);
+  background-image:var(--noise);
+  color:var(--bg);
+  padding:clamp(22px,4vw,34px);
+  max-width:460px;width:100%;
+  justify-self:center;
+  transform:rotate(-1.2deg);
+  border-radius:3px;
+  box-shadow:0 34px 60px -18px rgba(0,0,0,.6), 0 2px 0 rgba(0,0,0,.2);
+}
+.card .head{display:flex;justify-content:space-between;gap:12px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;border-bottom:2px solid var(--bg);padding-bottom:12px}
+.card .head b{font-family:var(--font-display);font-weight:900;font-size:20px;letter-spacing:.04em}
+.card .times{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:26px 0 22px}
+.card .times small{display:block;font-size:11px;letter-spacing:.14em;text-transform:uppercase}
+.card .times output{display:block;font-family:var(--font-display);font-weight:900;font-size:clamp(3rem,9vw,4.2rem);line-height:.95;font-variant-numeric:tabular-nums;min-height:1em}
+.card .fine{font-size:12.5px;line-height:1.5;border-top:1px dashed var(--bg);padding-top:14px}
+.card .id{position:absolute;right:clamp(16px,4vw,28px);bottom:14px;font-size:11px;letter-spacing:.12em}
+.reg{position:absolute;width:16px;height:16px;border:1.5px solid var(--bg);border-radius:50%}
+.reg::before,.reg::after{content:"";position:absolute;background:var(--bg)}
+.reg::before{left:50%;top:-5px;bottom:-5px;width:1.5px;transform:translateX(-50%)}
+.reg::after{top:50%;left:-5px;right:-5px;height:1.5px;transform:translateY(-50%)}
+.reg.tl{left:-9px;top:-9px}.reg.tr{right:-9px;top:-9px}.reg.bl{left:-9px;bottom:-9px}.reg.br{right:-9px;bottom:-9px}
+.card-copy p{color:var(--muted);max-width:44ch}
+.card-copy p + p{margin-top:14px}
+
+/* packs */
+.packs{display:grid;gap:16px;grid-template-columns:1fr;list-style:none;padding:0;margin:0}
+@media (min-width:880px){.packs{grid-template-columns:repeat(3,1fr)}}
+.pack{background:var(--surface);padding:clamp(22px,3vw,30px);display:flex;flex-direction:column;gap:18px;transform-style:preserve-3d;transform-origin:50% 50%}
+.pack .name{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.pack .price{font-family:var(--font-display);font-weight:900;font-size:clamp(3.4rem,9vw,5rem);line-height:.9}
+.pack .price small{font-size:.32em;letter-spacing:.04em;color:var(--muted);margin-left:6px}
+.pack p{color:var(--muted);font-size:15px}
+.pack ul{margin:0;padding:0 0 0 0;list-style:none;border-top:1px solid var(--rule);padding-top:16px;display:grid;gap:8px;font-size:14px}
+.pack li::before{content:"— ";color:var(--accent)}
+.pack-note{margin-top:22px;color:var(--muted);font-size:13px;letter-spacing:.04em}
+@media (hover:hover) and (prefers-reduced-motion:no-preference){
+  .pack{transition:transform .5s cubic-bezier(.2,.7,.2,1)}
+  .pack:hover{transform:perspective(900px) rotateX(4deg) rotateY(-6deg) translateZ(8px)}
+}
+
+/* closing */
+.close{text-align:left}
+.close .phrase{font-size:clamp(2.6rem,9vw,8.4rem);max-width:12ch}
+.close .phrase em{font-style:normal;color:var(--accent)}
+.timer{margin-top:clamp(28px,5vw,56px);display:flex;flex-wrap:wrap;align-items:flex-end;gap:18px 40px}
+.timer .big{font-family:var(--font-display);font-weight:900;font-size:clamp(4rem,14vw,10rem);line-height:.85;color:var(--status);font-variant-numeric:tabular-nums}
+.timer .lbl{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);max-width:26ch}
+.contact{margin-top:clamp(28px,4vw,44px);font-size:15px}
+
+/* footer */
+footer{border-top:1px solid var(--rule);padding:28px 0 36px;font-size:12px;color:var(--muted);display:flex;justify-content:space-between;align-items:flex-start;gap:12px 24px;flex-wrap:wrap}
+footer .notice{font-size:11px;letter-spacing:.02em;max-width:52ch}
+
+/* small screens: three to four digits, touch-sized */
+@media (max-width:520px){
+  .cell.sec,.colon-2{display:none}
+  .status{gap:18px}
+  .nav ul{display:none}
+}
+
+/* reduced motion: final state, no movement */
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+  .pinned #hero{height:auto}
+  .pinned .stage{position:relative;height:auto}
+}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <clipPath id="clip-top"><rect x="0" y="0" width="100" height="70"/></clipPath>
+    <clipPath id="clip-bot"><rect x="0" y="70" width="100" height="70"/></clipPath>
+    <linearGradient id="shade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#000" stop-opacity="0"/>
+      <stop offset=".44" stop-color="#000" stop-opacity=".12"/>
+      <stop offset=".5" stop-color="#000" stop-opacity=".5"/>
+      <stop offset=".56" stop-color="#000" stop-opacity=".12"/>
+      <stop offset="1" stop-color="#000" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+</svg>
+
+<div class="wrap">
+  <header class="nav">
+    <strong>Pausa Alugada</strong>
+    <nav aria-label="Primary">
+      <ul>
+        <li><a href="#how">How it works</a></li>
+        <li><a href="#card">The card</a></li>
+        <li><a href="#packs">Packs</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main>
+    <section id="hero" aria-labelledby="hero-title">
+      <div class="stage">
+        <div class="clock-wrap" id="clock-wrap">
+          <div class="clock" id="clock" role="img" aria-label="Clock showing 14:20:00, the start of a pause">
+            <div class="cell" data-d="1">
+              <svg viewBox="0 0 100 140" aria-hidden="true" focusable="false">
+                <g class="st-top"><rect class="face" x="0" y="0" width="100" height="70"/><text class="t" x="50" y="113" text-anchor="middle" clip-path="url(#clip-top)">1</text></g>
+                <g class="st-bot"><rect class="face" x="0" y="70" width="100" height="70"/><text class="t" x="50" y="113" text-anchor="middle" clip-path="url(#clip-bot)">1</text></g>
+                <g class="fl-top"><rect class="face" x="0" y="0" width="100" height="70"/><text class="t" x="50" y="113" text-anchor="middle" clip-path="url(#clip-top)">1</text></g>
+                <g class="fl-bot"><rect class="face" x="0" y="70" width="100" height="70"/><text class="t" x="50" y="113" text-anchor="middle" clip-path="url(#clip-bot)">1</text></g>
+                <rect class="shade" x="0" y="0" width="100" height="140" fill="url(#shade)"/>
+                <rect class="seam" x="0" y="68" width="100" height="4"/>
+              </svg>
+            </div>
+            <div class="cell" data-d="4">
+              <svg viewBox="0 0 100 140" aria-hidden="true" focusable="false">
+                <g class="st-top"><rect class="face" x="0" y="0" width="100" height="70"/><text class="t" x="50" y="113" text-anchor="middle" clip-path="url(#clip-top)">4</text></g>
+                <g class="st-bot"><rect class="face" x="0" y="70" width="100" height="70"/><text class="t" x="50" y="113" text-anchor="middle" clip-path="url(#clip-bot)">4</text></g>
+                <g class="fl-top"><rect class="face" x="0" y="0" width="100" height="70"/><text class="t" x="50" y="113" text-anchor="middle" clip-path="url(#clip-top)">4</text></g>
+                <g class="fl-bot"><rect class="face" x="0" y="70" width="100" height="70"/><text class="t" x="50" y="113" text-anchor="middle" clip-path="url(#clip-bot)">4</text></g>
+                <rect class="shade" x="0" y="0" width="100" height="140" fill="url(#shade)"/>
+                <rect class="seam" x="0" y="68" width="100" height="4"/>
+              </svg>
+            </div>
+            <div class="colon" aria-hidden="true"><i></i><i></i></div>
+            <div class="cell" data-d="2">
+              <svg viewBox="0 0 100 140" aria-hidden="true" focusable="false">
+                <g class="st-top"><rect class="face" x="0" y="0" width="100" height="70"/><text class="t" x="50" y="113" text-anchor="middle" clip-path="url(#clip-top)">2</text></g>
+                <g class="st-bot"><rect class="face" x="0" y="70" width="100" height="70"/><text class="t" x="50" y="113" text-anchor="middle" clip-path="url(#clip-bot)">2</text></g>
+                <g class="fl-top"><rect class="face" x="0" y="0" width="100" height="70"/><text class="t" x="50" y="113" text-anchor="middle" clip-path="url(#clip-top)">2</text></g>
+                <g class="fl-bot"><rect class="face" x="0" y="70" width="100" height="70"/><text class="t" x="50" y="113" text-anchor="middle" clip-path="url(#clip-bot)">2</text></g>
+                <rect class="shade" x="0" y="0" width="100" height="140" fill="url(#shade)"/>
+                <rect class="seam" x="0" y="68" width="100" height="4"/>
+              </svg>
+            </div>
+            <div class="cell" data-d="0">
+              <svg viewBox="0 0 100 140" aria-hidden="true" focusable="false">
+                <g class="st-top"><rect class="face" x="0" y="0" width="100" height="70"/><text class="t" x="50" y="113" text-anchor="middle" clip-path="url(#clip-top)">0</text></g>
+                <g class="st-bot"><rect class="face" x="0" y="70" width="100" height="70"/><text class="t" x="50" y="113" text-anchor="middle" clip-path="url(#clip-bot)">0</text></g>
+                <g class="fl-top"><rect class="face" x="0" y="0" width="100" height="70"/><text class="t" x="50" y="113" text-anchor="middle" clip-path="url(#clip-top)">0</text></g>
+                <g class="fl-bot"><rect class="face" x="0" y="70" width="100" height="70"/><text class="t" x="50" y="113" text-anchor="middle" clip-path="url(#clip-bot)">0</text></g>
+                <rect class="shade" x="0" y="0" width="100" height="140" fill="url(#shade)"/>
+                <rect class="seam" x="0" y="68" width="100" height="4"/>
+              </svg>
+            </div>
+            <div class="colon colon-2" aria-hidden="true"><i></i><i></i></div>
+            <div class="cell sec" data-d="0">
+              <svg viewBox="0 0 100 140" aria-hidden="true" focusable="false">
+                <g class="st-top"><rect class="face" x="0" y="0" width="100" height="70"/><text class="t" x="50" y="113" text-anchor="middle" clip-path="url(#clip-top)">0</text></g>
+                <g class="st-bot"><rect class="face" x="0" y="70" width="100" height="70"/><text class="t" x="50" y="113" text-anchor="middle" clip-path="url(#clip-bot)">0</text></g>
+                <g class="fl-top"><rect class="face" x="0" y="0" width="100" height="70"/><text class="t" x="50" y="113" text-anchor="middle" clip-path="url(#clip-top)">0</text></g>
+                <g class="fl-bot"><rect class="face" x="0" y="70" width="100" height="70"/><text class="t" x="50" y="113" text-anchor="middle" clip-path="url(#clip-bot)">0</text></g>
+                <rect class="shade" x="0" y="0" width="100" height="140" fill="url(#shade)"/>
+                <rect class="seam" x="0" y="68" width="100" height="4"/>
+              </svg>
+            </div>
+            <div class="cell sec" data-d="0">
+              <svg viewBox="0 0 100 140" aria-hidden="true" focusable="false">
+                <g class="st-top"><rect class="face" x="0" y="0" width="100" height="70"/><text class="t" x="50" y="113" text-anchor="middle" clip-path="url(#clip-top)">0</text></g>
+                <g class="st-bot"><rect class="face" x="0" y="70" width="100" height="70"/><text class="t" x="50" y="113" text-anchor="middle" clip-path="url(#clip-bot)">0</text></g>
+                <g class="fl-top"><rect class="face" x="0" y="0" width="100" height="70"/><text class="t" x="50" y="113" text-anchor="middle" clip-path="url(#clip-top)">0</text></g>
+                <g class="fl-bot"><rect class="face" x="0" y="70" width="100" height="70"/><text class="t" x="50" y="113" text-anchor="middle" clip-path="url(#clip-bot)">0</text></g>
+                <rect class="shade" x="0" y="0" width="100" height="140" fill="url(#shade)"/>
+                <rect class="seam" x="0" y="68" width="100" height="4"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div class="status" aria-live="off">
+          <div><span class="label">Pause starts</span><span class="val">14:20</span></div>
+          <div><span class="label">Remaining</span><span class="val live" id="countdown">20:00</span></div>
+        </div>
+
+        <div class="hero-copy">
+          <h1 class="display" id="hero-title">We sell twenty minutes nobody needs you.</h1>
+          <p class="line">A printed card, a start time, a clock that stops.</p>
+          <p class="brand">Pausa Alugada. Rent the quiet.</p>
+          <p class="hint">Scroll to stop the clock</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="how" class="block" aria-labelledby="how-title">
+      <div class="wrap">
+        <p class="eyebrow">How it works</p>
+        <h2 class="display" id="how-title">Three steps. No calendar invites.</h2>
+        <ol class="steps">
+          <li class="step reveal">
+            <div class="mini"><span>1</span></div>
+            <h3>Choose a pause</h3>
+            <p>Pick one pause, five or twenty. Each pack is sold once, with no renewal and no account to manage.</p>
+          </li>
+          <li class="step reveal">
+            <div class="mini"><span>2</span></div>
+            <h3>Receive your card</h3>
+            <p>A printed card with a start time and an end time, in plain text. You do not need an app to read it.</p>
+          </li>
+          <li class="step reveal">
+            <div class="mini"><span>3</span></div>
+            <h3>Switch off</h3>
+            <p>Hand the card to the clock in the waiting room. Your phone can stay in your bag until the end time.</p>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <section id="card" class="block" aria-labelledby="card-title">
+      <div class="wrap card-area">
+        <div class="card reveal" aria-label="Sample pause card">
+          <span class="reg tl" aria-hidden="true"></span><span class="reg tr" aria-hidden="true"></span>
+          <span class="reg bl" aria-hidden="true"></span><span class="reg br" aria-hidden="true"></span>
+          <div class="head"><b>Pausa Alugada</b><span>Pause card</span></div>
+          <div class="times">
+            <div><small>Start</small><output data-type>14:20</output></div>
+            <div><small>End</small><output>14:40</output></div>
+          </div>
+          <p class="fine">Twenty minutes, from the start time to the end time. Not transferable. Nobody will ask you for a reply.</p>
+          <span class="id">No. 0047</span>
+        </div>
+        <div class="card-copy">
+          <p class="eyebrow" id="card-title">The card</p>
+          <h2 class="display" style="margin-top:14px">Your pause, printed.</h2>
+          <p>Both times are printed in text, so the card still works when you ignore the clock on the wall.</p>
+          <p>Keep it in a pocket, on the desk, or give it back when you leave. We do not track where it goes.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="packs" class="block" aria-labelledby="packs-title">
+      <div class="wrap">
+        <p class="eyebrow">Packs</p>
+        <h2 class="display" id="packs-title">Three ways to rent the quiet.</h2>
+        <ul class="packs">
+          <li class="pack reveal">
+            <span class="name">One pause</span>
+            <span class="price">$9<small>once</small></span>
+            <p>One card, one twenty-minute window. Good for a single afternoon.</p>
+            <ul>
+              <li>1 printed card</li>
+              <li>20 minutes, start to end</li>
+              <li>Valid for 30 days</li>
+            </ul>
+          </li>
+          <li class="pack reveal">
+            <span class="name">Five pauses</span>
+            <span class="price">$40<small>once</small></span>
+            <p>Five cards for a busy week, with the start times you choose.</p>
+            <ul>
+              <li>5 printed cards</li>
+              <li>Pick any five start times</li>
+              <li>Valid for 90 days</li>
+            </ul>
+          </li>
+          <li class="pack reveal">
+            <span class="name">Twenty pauses</span>
+            <span class="price">$140<small>once</small></span>
+            <p>For people who have stopped counting their free time.</p>
+            <ul>
+              <li>20 printed cards</li>
+              <li>A reserved start time each week</li>
+              <li>Valid for one year</li>
+            </ul>
+          </li>
+        </ul>
+        <p class="pack-note">Packs are handed over at the front desk, on the second floor.</p>
+      </div>
+    </section>
+
+    <section id="close" class="block close" aria-labelledby="close-title">
+      <div class="wrap">
+        <p class="eyebrow" id="close-title">The clock stops here</p>
+        <p class="display phrase" style="margin-top:18px">Twenty minutes nobody <em>needs you.</em></p>
+        <div class="timer reveal">
+          <span class="big" aria-hidden="true">20:00</span>
+          <span class="lbl">Your pause, from the start time on the card to the end time.</span>
+        </div>
+        <p class="contact">Questions about a pack? <a href="mailto:desk@pausa-alugada.invalid">Write to the front desk</a>.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <span>&copy; Pausa Alugada</span>
+    <span class="notice">Layout de demonstração, a marca e os preços são propostas.</span>
+  </footer>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  var START = ['1', '4', '2', '0', '0', '0'];
+  var THRESH = [0.10, 0.22, 0.34, 0.46, 0.58, 0.70];
+  var root = document.documentElement;
+  var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var hasGsap = typeof window.gsap !== 'undefined';
+  var fancy = !reduce && hasGsap && typeof window.ScrollTrigger !== 'undefined';
+  var canAnimate = !reduce && hasGsap;
+  var cells = [].slice.call(document.querySelectorAll('.cell'));
+  var cd = document.getElementById('countdown');
+  var clock = document.getElementById('clock');
+  var progress = 0;
+  var live = START.slice();
+
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function digitsNow() {
+    var d = new Date();
+    return (pad(d.getHours()) + pad(d.getMinutes()) + pad(d.getSeconds())).split('');
+  }
+  function setTexts(group, v) {
+    [].forEach.call(group.querySelectorAll('text'), function (t) { t.textContent = v; });
+  }
+  function setStatic(cell, v) {
+    cell.dataset.d = v;
+    [].forEach.call(cell.querySelectorAll('g'), function (g) { setTexts(g, v); });
+  }
+  function flip(cell, v) {
+    var prev = cell.dataset.d;
+    if (prev === v) return;
+    if (!canAnimate) { setStatic(cell, v); return; }
+    cell.dataset.d = v;
+    var stT = cell.querySelector('.st-top'), stB = cell.querySelector('.st-bot');
+    var flT = cell.querySelector('.fl-top'), flB = cell.querySelector('.fl-bot');
+    if (cell._tl) cell._tl.kill();
+    setTexts(stT, v); setTexts(stB, prev);
+    setTexts(flT, prev); setTexts(flB, v);
+    gsap.set(flT, { opacity: 1, scaleY: 1, transformOrigin: '50% 100%' });
+    gsap.set(flB, { opacity: 0, scaleY: 0, transformOrigin: '50% 0%' });
+    cell._tl = gsap.timeline()
+      .to(flT, { scaleY: 0, duration: 0.2, ease: 'power2.in' })
+      .set(flT, { opacity: 0 })
+      .set(flB, { opacity: 1 })
+      .to(flB, { scaleY: 1, duration: 0.26, ease: 'power2.out',
+        onComplete: function () { setTexts(stB, v); gsap.set(flB, { opacity: 0 }); } });
+  }
+  function render() {
+    cells.forEach(function (c, i) {
+      flip(c, progress >= THRESH[i] ? START[i] : live[i]);
+    });
+    var k = Math.min(1, Math.max(0, (progress - 0.7) / 0.3));
+    var s = Math.round(1200 * (1 - k));
+    cd.textContent = pad(Math.floor(s / 60)) + ':' + pad(s % 60);
+  }
+
+  if (fancy) {
+    root.classList.add('pinned');
+    gsap.registerPlugin(ScrollTrigger);
+    live = digitsNow();
+    cells.forEach(function (c, i) {
+      setTimeout(function () { flip(c, live[i]); }, i * 90);
+    });
+    ScrollTrigger.create({
+      trigger: '#hero', start: 'top top', end: 'bottom bottom', scrub: true,
+      onUpdate: function (self) { progress = self.progress; render(); }
+    });
+    setInterval(function () {
+      if (progress > 0) return;
+      live = digitsNow();
+      render();
+    }, 1000);
+    gsap.utils.toArray('.reveal').forEach(function (el) {
+      gsap.from(el, { y: 24, opacity: 0, duration: 0.8, ease: 'power2.out', clearProps: 'transform',
+        scrollTrigger: { trigger: el, start: 'top 88%' } });
+    });
+  }
+
+  var clockWrap = document.getElementById('clock-wrap');
+  if (!reduce && window.matchMedia('(hover: hover)').matches) {
+    clockWrap.addEventListener('pointermove', function (e) {
+      var r = clockWrap.getBoundingClientRect();
+      var x = (e.clientX - r.left) / r.width * 2 - 1;
+      var y = (e.clientY - r.top) / r.height * 2 - 1;
+      clock.style.setProperty('--ry', (x * 6).toFixed(2) + 'deg');
+      clock.style.setProperty('--rx', (-y * 5).toFixed(2) + 'deg');
+    });
+    clockWrap.addEventListener('pointerleave', function () {
+      clock.style.setProperty('--ry', '0deg');
+      clock.style.setProperty('--rx', '0deg');
+    });
+  }
+
+  var typed = [].slice.call(document.querySelectorAll('[data-type]'));
+  if (canAnimate && 'IntersectionObserver' in window) {
+    typed.forEach(function (el) { el.dataset.full = el.textContent; el.textContent = ''; });
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        if (!en.isIntersecting) return;
+        io.unobserve(en.target);
+        var el = en.target, s = el.dataset.full, i = 0;
+        var t = setInterval(function () {
+          el.textContent = s.slice(0, ++i);
+          if (i >= s.length) clearInterval(t);
+        }, 140);
+      });
+    }, { threshold: 0.6 });
+    typed.forEach(function (el) { io.observe(el); });
+  }
+});
+</script>
+</body>
+</html>

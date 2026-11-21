@@ -1,0 +1,520 @@
+<!doctype html>
+<html lang="en" class="no-js">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Quistermo — Overhead Parallax</title>
+<meta name="description" content="Quistermo runs 60-minute decision sessions. Each person writes a position on a sheet, the sheets go on the overhead projector, and only what shows through every layer is recorded.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --bg:#1B1A17;
+  --sheet:#F3EEDF;
+  --ink:#1E1B16;
+  --accent:#E0622B;
+  --status:#3F7D5C;
+  --lamp-hot:#FF9A3C;
+  --line:rgba(243,238,223,.16);
+  --sans:"Space Grotesk",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html{background:var(--bg);-webkit-text-size-adjust:100%}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--sheet);
+  font-family:var(--sans);
+  font-size:17px;
+  line-height:1.55;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));
+  padding-right:max(16px, env(safe-area-inset-right, 0px));
+  -webkit-font-smoothing:antialiased;
+}
+.page{overflow-x:clip}
+h1,h2,h3{font-weight:500;margin:0;letter-spacing:-.02em;line-height:1.05}
+p{margin:0}
+a{color:inherit}
+.mono{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);margin-bottom:18px}
+.wrap{max-width:1200px;margin:0 auto}
+section h2{font-size:clamp(1.9rem,4vw,3.4rem);margin-bottom:24px;max-width:18ch}
+.lead{opacity:.82;max-width:52ch}
+.split{display:grid;gap:56px;grid-template-columns:1fr}
+@media (min-width:900px){.split{grid-template-columns:1fr 1fr;align-items:center;gap:72px}}
+
+/* acetate sheet */
+.paper{
+  position:relative;
+  background:rgba(243,238,223,.86);
+  color:var(--ink);
+  border-radius:3px 7px 4px 6px / 6px 3px 7px 4px;
+  box-shadow:0 22px 50px rgba(0,0,0,.4);
+  background-image:radial-gradient(rgba(30,27,22,.07) 1px, transparent 1.2px);
+  background-size:5px 5px;
+}
+.paper::before,.paper::after{
+  content:"";position:absolute;width:14px;height:14px;opacity:.5;pointer-events:none;
+  background:linear-gradient(currentColor,currentColor) center/1px 100% no-repeat,
+             linear-gradient(currentColor,currentColor) center/100% 1px no-repeat;
+}
+.paper::before{top:12px;left:12px}
+.paper::after{bottom:12px;right:12px}
+.sheet-no{font-family:var(--mono);font-size:12px;letter-spacing:.08em;opacity:.7}
+.sheet-line{
+  font-size:clamp(20px,2.2vw,30px);font-weight:500;line-height:1.14;letter-spacing:-.01em;
+  text-decoration:underline;text-decoration-color:var(--accent);text-decoration-thickness:3px;text-underline-offset:.2em;
+}
+.sheet-body{position:absolute;inset:0;padding:clamp(18px,2.4vw,30px);display:flex;flex-direction:column;justify-content:space-between}
+
+/* buttons */
+.btn{
+  display:inline-block;background:var(--accent);color:var(--ink);font-family:var(--sans);font-weight:500;font-size:16px;
+  text-decoration:none;padding:14px 22px;border:0;border-radius:4px;cursor:pointer;
+}
+.btn-line{background:transparent;color:var(--sheet);box-shadow:inset 0 0 0 1px var(--line)}
+.btn:focus-visible,.btn-line:focus-visible,nav a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+
+/* header */
+.top{
+  position:fixed;top:0;left:0;right:0;z-index:40;
+  display:flex;justify-content:space-between;align-items:center;gap:16px;
+  padding:16px max(16px, env(safe-area-inset-right, 0px)) 16px max(16px, env(safe-area-inset-left, 0px));
+  font-family:var(--mono);font-size:13px;letter-spacing:.06em;
+}
+.brand{font-family:var(--sans);font-weight:700;font-size:18px;text-decoration:none;letter-spacing:-.01em}
+nav{display:flex;gap:22px;align-items:center}
+nav a{text-decoration:none;opacity:.8}
+nav a:hover{opacity:1;color:var(--accent)}
+.nav-cta{border:1px solid var(--line);padding:6px 12px;border-radius:3px;opacity:1 !important}
+@media (max-width:559px){nav a:not(.nav-cta){display:none}}
+
+/* dim overlay used by the opening (JS only) */
+.dim{position:fixed;inset:0;background:var(--bg);opacity:0;pointer-events:none;z-index:30}
+
+/* 1. hero */
+.hero{position:relative;height:210vh;height:210svh}
+.stage{position:sticky;top:0;height:100vh;height:100svh;min-height:560px;overflow:hidden;isolation:isolate}
+.lamp{
+  position:absolute;left:50%;top:-26%;width:min(150vw,1100px);height:72%;translate:-50% 0;z-index:0;pointer-events:none;
+  background:radial-gradient(closest-side, rgba(224,98,43,.55), rgba(224,98,43,.16) 55%, rgba(224,98,43,0));
+}
+.lamp-hot{
+  position:absolute;inset:0;opacity:1;
+  background:radial-gradient(closest-side, rgba(255,154,60,.6), rgba(255,154,60,.18) 55%, rgba(255,154,60,0));
+}
+.js-motion .lamp{opacity:0}
+.js-motion .lamp-hot{opacity:0}
+.sheets{position:absolute;inset:0;pointer-events:none}
+.hero .sheet{position:absolute;width:min(42vw,500px);aspect-ratio:1/1.05}
+.hero .s1{right:9%;top:12%;z-index:1}
+.hero .s2{right:14%;top:18%;z-index:2}
+.hero .s3{right:7%;top:24%;z-index:3}
+.hero .s4{right:16%;top:29%;z-index:4}
+.hero .s5{right:10%;top:34%;z-index:5;transition:translate .6s ease-out}
+.hero-copy{
+  position:absolute;z-index:10;left:clamp(0px,4vw,56px);top:50%;translate:0 -50%;width:min(40vw,640px);
+}
+.hero h1{font-size:clamp(2.1rem,5vw,4.4rem);line-height:1.02;margin-bottom:28px}
+.hero-copy .l{font-size:18px;opacity:.9}
+.hero-copy .l3{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;opacity:.6;margin-top:16px}
+.cta{display:flex;gap:12px;flex-wrap:wrap;margin-top:28px}
+@media (max-width:719px){
+  .hero{height:190vh;height:190svh}
+  .hero .sheet{width:56vw;aspect-ratio:1/.95}
+  .hero .s2,.hero .s4{display:none}
+  .hero .s1{left:6%;right:auto;top:6svh}
+  .hero .s3{left:14%;right:auto;top:14svh}
+  .hero .s5{left:18%;right:auto;top:22svh}
+  .hero-copy{left:0;right:0;width:auto;top:auto;bottom:6svh;translate:none}
+  .hero h1{font-size:2.1rem}
+}
+
+/* 2. problem */
+.problem{padding:clamp(72px,12vw,140px) 0}
+.objections{display:grid;max-width:520px;margin-top:8px}
+.objection{padding:22px 24px;margin-top:-12px}
+.objection:first-child{margin-top:0}
+.objection:nth-child(odd){rotate:-1.2deg}
+.objection:nth-child(even){rotate:1deg}
+.quote{font-size:clamp(18px,2vw,24px);font-weight:500;line-height:1.25;margin-top:10px}
+
+/* 3. how a session runs (pinned on desktop) */
+.process{min-height:100vh;min-height:100svh;display:flex;align-items:center;padding:clamp(72px,10vh,120px) 0}
+.process-grid{display:grid;gap:56px;align-items:center;grid-template-columns:1fr;width:100%}
+@media (min-width:900px){.process-grid{grid-template-columns:1fr 1.1fr;gap:80px}}
+.steps{list-style:none;padding:0;margin:0}
+.step{border-top:1px solid var(--line);padding:20px 0;transition:opacity .45s ease}
+.step:last-child{border-bottom:1px solid var(--line)}
+.step .mono{color:var(--accent);display:block;margin-bottom:8px}
+.step p{max-width:44ch}
+.projector{
+  display:none;position:relative;aspect-ratio:4/3;border-radius:6px;overflow:hidden;
+  background:#15140F;box-shadow:inset 0 0 0 1px var(--line);
+}
+.beam{position:absolute;inset:0;background:radial-gradient(ellipse at 50% -10%, rgba(255,154,60,.28), rgba(255,154,60,0) 60%)}
+.pj-sheet{
+  position:absolute;left:12%;right:12%;top:14%;bottom:14%;
+  display:flex;flex-direction:column;justify-content:space-between;padding:clamp(18px,2.4vw,30px);
+  opacity:0;translate:0 18px;transition:opacity .5s ease,translate .6s ease;
+}
+.pj-sheet.is-on{opacity:1;translate:0 0}
+.desk-pin .projector{display:block}
+.desk-pin .step{opacity:.4}
+.desk-pin .step.is-on{opacity:1}
+
+/* 4. register (pinned on desktop) */
+.register{min-height:100vh;min-height:100svh;display:flex;align-items:center;padding:clamp(72px,10vh,120px) 0}
+.reg-stage{
+  position:relative;width:100%;max-width:520px;aspect-ratio:1/1.05;justify-self:center;border-radius:4px;
+  background-image:linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px);
+  background-size:40px 40px;
+}
+.reg-a,.reg-b{position:absolute;display:flex;flex-direction:column;justify-content:space-between;padding:clamp(18px,2.4vw,28px)}
+.reg-a{left:10%;top:12%;width:76%;height:50%;z-index:1}
+.reg-b{left:20%;top:48%;width:72%;height:36%;z-index:2}
+.reg-b .mono{line-height:1.8;letter-spacing:.04em;text-transform:none;font-size:14px}
+.stamp{
+  position:absolute;right:8%;bottom:6%;z-index:3;margin:0;rotate:-7deg;
+  font-family:var(--mono);font-size:clamp(14px,1.6vw,18px);letter-spacing:.14em;text-transform:uppercase;
+  color:var(--status);border:3px solid var(--status);padding:8px 16px;border-radius:3px;
+  transition:color .4s ease,border-color .4s ease,opacity .4s ease;
+}
+.desk-pin .stamp{color:var(--accent);border-color:var(--accent);opacity:.6}
+.desk-pin .stamp.is-registered{color:var(--status);border-color:var(--status);opacity:1}
+
+/* 5. sessions */
+.sessions{padding:clamp(72px,12vw,140px) 0}
+.cards{display:grid;gap:20px;grid-template-columns:1fr}
+@media (min-width:800px){.cards{grid-template-columns:repeat(3,1fr)}}
+.card{padding:clamp(24px,3vw,32px);display:flex;flex-direction:column;gap:14px;transition:translate .35s ease}
+.card:nth-child(1){rotate:-1deg}
+.card:nth-child(2){rotate:.6deg}
+.card:nth-child(3){rotate:-.4deg}
+@media (hover:hover) and (pointer:fine){.card:hover{translate:0 -8px}}
+.card-no{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;opacity:.7}
+.card h3{font-size:34px}
+.price{font-size:44px;font-weight:500;letter-spacing:-.02em;line-height:1}
+.price span{font-family:var(--mono);font-size:13px;opacity:.7;letter-spacing:0}
+.card ul{margin:0;padding-left:18px;font-size:15px;line-height:1.5}
+.card .btn{margin-top:auto;align-self:flex-start;background:var(--ink);color:var(--sheet)}
+
+/* 6. book */
+.book{padding:clamp(72px,12vw,140px) 0}
+.form{padding:clamp(24px,3vw,40px);display:grid;gap:18px;color:var(--ink)}
+.form label{display:grid;gap:6px;font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink)}
+.form input,.form select,.form textarea{
+  font:500 16px/1.3 var(--sans);color:var(--ink);background:transparent;width:100%;
+  border:0;border-bottom:1.5px solid rgba(30,27,22,.5);border-radius:0;padding:8px 2px;
+}
+.form textarea{resize:vertical}
+.form-status{font-family:var(--mono);font-size:13px;min-height:1.5em;color:var(--ink)}
+
+/* footer */
+.foot{border-top:1px solid var(--line);padding:40px 0 32px}
+.foot .wrap{display:grid;gap:8px}
+.foot-brand{font-family:var(--sans);font-weight:700;font-size:20px}
+.foot .mono{opacity:.75}
+.template-notice{font-family:var(--mono);font-size:12px;color:#F3EEDF;opacity:.6;margin-top:14px}
+
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation:none !important;transition:none !important;scroll-behavior:auto !important}
+}
+</style>
+</head>
+<body>
+<div class="dim" aria-hidden="true"></div>
+
+<header class="top">
+  <a class="brand" href="#top">Quistermo</a>
+  <nav aria-label="Main">
+    <a href="#how">How it runs</a>
+    <a href="#register">Register</a>
+    <a href="#sessions">Sessions</a>
+    <a class="nav-cta" href="#book">Book</a>
+  </nav>
+</header>
+
+<div class="page">
+<main>
+
+  <!-- 1. Hero -->
+  <section class="hero" id="top">
+    <div class="stage">
+      <div class="lamp" aria-hidden="true"><span class="lamp-hot"></span></div>
+      <div class="sheets" aria-hidden="true">
+        <div class="paper sheet s1" data-depth=".6" data-ox="-10" data-tilt="-5"><div class="sheet-body"><span class="sheet-no">01 / 05</span><p class="sheet-line">No budget before spring.</p></div></div>
+        <div class="paper sheet s2" data-depth=".3" data-ox="8" data-tilt="3"><div class="sheet-body"><span class="sheet-no">02 / 05</span><p class="sheet-line">We tried this in March.</p></div></div>
+        <div class="paper sheet s3" data-depth=".9" data-ox="-4" data-tilt="-2"><div class="sheet-body"><span class="sheet-no">03 / 05</span><p class="sheet-line">Show me the numbers.</p></div></div>
+        <div class="paper sheet s4" data-depth=".45" data-ox="12" data-tilt="4"><div class="sheet-body"><span class="sheet-no">04 / 05</span><p class="sheet-line">Ask the client first.</p></div></div>
+        <div class="paper sheet s5" data-depth="1" data-ox="0" data-tilt="-1"><div class="sheet-body"><span class="sheet-no">05 / 05</span><p class="sheet-line">Anything but the vendor.</p></div></div>
+      </div>
+
+      <div class="hero-copy">
+        <p class="eyebrow">Decision sessions on one overhead projector</p>
+        <h1>Agree on the part you can see through.</h1>
+        <p class="l">Put your positions on separate sheets.</p>
+        <p class="l">Stack them on the lamp. Read only what agrees.</p>
+        <p class="l3">Quistermo: decisions you can see through.</p>
+        <div class="cta">
+          <a class="btn" href="#book">Book a session</a>
+          <a class="btn btn-line" href="#how">How it runs</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2. The problem -->
+  <section class="problem" id="problem">
+    <div class="wrap split">
+      <div>
+        <p class="eyebrow">01 — The problem</p>
+        <h2>Five people, five sheets.</h2>
+        <p class="lead">Every meeting ends with five true statements that never line up into one decision. The disagreement is not the problem. Nobody can see where the disagreements overlap.</p>
+      </div>
+      <div class="objections">
+        <article class="paper objection"><p class="mono">Marta · sheet 1</p><p class="quote">“The budget is too tight to move before spring.”</p></article>
+        <article class="paper objection"><p class="mono">Tom · sheet 2</p><p class="quote">“We tried this in March. It went nowhere.”</p></article>
+        <article class="paper objection"><p class="mono">Ines · sheet 3</p><p class="quote">“I will agree once I have seen the numbers.”</p></article>
+        <article class="paper objection"><p class="mono">Dev · sheet 4</p><p class="quote">“Let us ask the client first, then decide.”</p></article>
+        <article class="paper objection"><p class="mono">Rui · sheet 5</p><p class="quote">“Fine with anything except the vendor.”</p></article>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3. How a session runs (pinned on desktop) -->
+  <section class="process" id="how">
+    <div class="wrap process-grid">
+      <div>
+        <p class="eyebrow">02 — How a session runs</p>
+        <h2>Sixty minutes, one projector.</h2>
+        <ol class="steps">
+          <li class="step is-on"><span class="mono">01 · Write</span><p>Each person writes one position on one sheet. Short, in marker, with no notes on anyone else’s sheet.</p></li>
+          <li class="step"><span class="mono">02 · Stack</span><p>All sheets go on the projector, one above another, under the same light.</p></li>
+          <li class="step"><span class="mono">03 · Read</span><p>Only what shows through every layer is written into the record. The rest stays on the glass.</p></li>
+        </ol>
+      </div>
+      <div class="projector" aria-hidden="true">
+        <div class="beam"></div>
+        <div class="paper pj-sheet is-on"><span class="sheet-no">Sheet 01</span><p class="sheet-line">Move it to Tuesday.</p></div>
+        <div class="paper pj-sheet"><span class="sheet-no">Sheet 02</span><p class="sheet-line">Two weeks, then vote.</p></div>
+        <div class="paper pj-sheet"><span class="sheet-no">Read</span><p class="sheet-line">Only what agrees.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4. Register (pinned on desktop) -->
+  <section class="register" id="register">
+    <div class="wrap split">
+      <div>
+        <p class="eyebrow">03 — Register</p>
+        <h2>The record only accepts what lines up.</h2>
+        <p class="lead">When the sheets are stacked, their registration marks have to meet. Each decision goes onto a record sheet, with the names of everyone who signed it.</p>
+      </div>
+      <div class="reg-stage">
+        <div class="paper reg-a"><span class="sheet-no">Record · Decision</span><p class="sheet-line">Move the Thursday review to Tuesday.</p></div>
+        <div class="paper reg-b"><span class="sheet-no">Signed by</span><p class="mono">Marta · Tom · Ines · Dev · Rui</p></div>
+        <p class="stamp" id="stamp">Registered</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5. Sessions -->
+  <section class="sessions" id="sessions">
+    <div class="wrap">
+      <p class="eyebrow">04 — Sessions</p>
+      <h2>Three sizes. One sheet per person.</h2>
+      <div class="cards">
+        <article class="paper card">
+          <p class="card-no">2 sheets</p>
+          <h3>Pair</h3>
+          <p class="price">$140<span> / session</span></p>
+          <ul><li>Two sheets, one decision</li><li>60-minute Overlay session</li><li>Printed record sheet with signatures</li></ul>
+          <a class="btn" href="#book">Book Pair</a>
+        </article>
+        <article class="paper card">
+          <p class="card-no">5 sheets</p>
+          <h3>Table</h3>
+          <p class="price">$260<span> / session</span></p>
+          <ul><li>Five sheets, one per person</li><li>60-minute Overlay session</li><li>Printed record sheet with signatures</li></ul>
+          <a class="btn" href="#book">Book Table</a>
+        </article>
+        <article class="paper card">
+          <p class="card-no">7 sheets</p>
+          <h3>Board</h3>
+          <p class="price">$360<span> / session</span></p>
+          <ul><li>Up to seven sheets, one per person</li><li>60-minute Overlay session</li><li>Facilitator keeps the stack</li></ul>
+          <a class="btn" href="#book">Book Board</a>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6. Book a session -->
+  <section class="book" id="book">
+    <div class="wrap split">
+      <div>
+        <p class="eyebrow">05 — Book a session</p>
+        <h2>Bring the sheets. We bring the lamp.</h2>
+        <p class="lead">Tell us how many people are in the room and what you have not been able to agree on. We reply within two working days.</p>
+      </div>
+      <form class="paper form" id="book-form" method="post" action="#book">
+        <label>Name<input name="name" autocomplete="name" required></label>
+        <label>Work email<input type="email" name="email" autocomplete="email" required></label>
+        <label>Organization<input name="org" autocomplete="organization"></label>
+        <label>Sheets needed
+          <select name="sheets">
+            <option>2 sheets (Pair)</option>
+            <option selected>5 sheets (Table)</option>
+            <option>7 sheets (Board)</option>
+          </select>
+        </label>
+        <label>What you cannot agree on<textarea name="topic" rows="3"></textarea></label>
+        <button class="btn" type="submit">Request a session</button>
+        <p class="form-status" id="form-status" role="status"></p>
+      </form>
+    </div>
+  </section>
+
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <p class="foot-brand">Quistermo</p>
+    <p class="mono">Agree on the part you can see through.</p>
+    <p class="mono">quistermo.invalid</p>
+    <p class="template-notice">Template notice: brand, prices and contact details are placeholders.</p>
+  </div>
+</footer>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.15.1/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.15.1/dist/ScrollTrigger.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lenis@1.3.27/dist/lenis.min.js"></script>
+<script>
+(function () {
+  'use strict';
+  var root = document.documentElement;
+  root.classList.remove('no-js');
+  root.classList.add('js');
+
+  // Booking form: no backend in this build, so submission is handled in the page only.
+  var form = document.getElementById('book-form');
+  var status = document.getElementById('form-status');
+  if (form) {
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      if (!form.checkValidity()) { form.reportValidity(); return; }
+      status.textContent = 'Thanks. We will confirm a time within two working days.';
+      form.reset();
+    });
+  }
+
+  // Motion runs only with GSAP loaded and without reduced-motion. Otherwise the page stays in its final static state.
+  var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduce || typeof window.gsap === 'undefined' || typeof window.ScrollTrigger === 'undefined') return;
+
+  var gsap = window.gsap;
+  var ScrollTrigger = window.ScrollTrigger;
+  gsap.registerPlugin(ScrollTrigger);
+  root.classList.add('js-motion');
+
+  // Lenis smooth scroll, synced with ScrollTrigger; native scrolling on touch.
+  if (typeof window.Lenis !== 'undefined') {
+    var lenis = new window.Lenis({ duration: 1.1, syncTouch: false });
+    lenis.on('scroll', ScrollTrigger.update);
+    gsap.ticker.add(function (time) { lenis.raf(time * 1000); });
+    gsap.ticker.lagSmoothing(0);
+  }
+
+  // Opening: the room darkens, the lamp comes on, the sheets enter in layers.
+  gsap.timeline({ defaults: { ease: 'power2.out' } })
+    .fromTo('.dim', { opacity: 0 }, { opacity: 0.85, duration: 0.4 })
+    .to('.dim', { opacity: 0, duration: 1.4, ease: 'power1.inOut' }, '+=0.2')
+    .to('.lamp', { opacity: 1, duration: 1.4 }, '<')
+    .fromTo('.hero .sheet', { opacity: 0, scale: 0.94 }, { opacity: 1, scale: 1, duration: 0.9, stagger: 0.18 }, '-=1.4');
+
+  // Hero: each sheet drifts at its own depth; misregistration closes by the end of the track.
+  gsap.utils.toArray('.hero .sheet').forEach(function (el) {
+    var depth = parseFloat(el.dataset.depth) || 0;
+    var ox = parseFloat(el.dataset.ox) || 0;
+    var tilt = parseFloat(el.dataset.tilt) || 0;
+    gsap.set(el, { x: ox, rotation: tilt });
+    gsap.to(el, {
+      x: 0, y: -depth * 170, rotation: 0, ease: 'none',
+      scrollTrigger: { trigger: '.hero', start: 'top top', end: 'bottom bottom', scrub: 0.8 }
+    });
+  });
+  gsap.fromTo('.lamp-hot', { opacity: 0 }, {
+    opacity: 1, ease: 'none',
+    scrollTrigger: { trigger: '.hero', start: 'top top', end: 'bottom bottom', scrub: true }
+  });
+  gsap.fromTo('.hero-copy', { y: 40 }, {
+    y: 0, ease: 'none',
+    scrollTrigger: { trigger: '.hero', start: 'top top', end: '40% top', scrub: true }
+  });
+
+  // Pointer: the top sheet shifts a few pixels toward the cursor (desktop only).
+  var stage = document.querySelector('.stage');
+  var top = document.querySelector('.hero .s5');
+  if (stage && top && window.matchMedia('(pointer: fine)').matches) {
+    stage.addEventListener('pointermove', function (e) {
+      var r = stage.getBoundingClientRect();
+      var nx = (e.clientX - r.left) / r.width - 0.5;
+      var ny = (e.clientY - r.top) / r.height - 0.5;
+      top.style.translate = (nx * 10).toFixed(1) + 'px ' + (ny * 8).toFixed(1) + 'px';
+    });
+    stage.addEventListener('pointerleave', function () { top.style.translate = '0px 0px'; });
+  }
+
+  // Problem: each objection sheet slides into the pile as you scroll.
+  gsap.utils.toArray('.objection').forEach(function (el) {
+    gsap.fromTo(el, { y: 70, opacity: 0 }, {
+      y: 0, opacity: 1, ease: 'none',
+      scrollTrigger: { trigger: el, start: 'top 95%', end: 'top 65%', scrub: true }
+    });
+  });
+
+  // Pinned sections run only on desktop widths.
+  var mm = gsap.matchMedia();
+  mm.add('(min-width: 900px)', function () {
+    root.classList.add('desk-pin');
+
+    // How a session runs: pinned, the active step and projector sheet change with progress.
+    var steps = gsap.utils.toArray('.step');
+    var sheets = gsap.utils.toArray('.pj-sheet');
+    function show(i) {
+      steps.forEach(function (s, k) { s.classList.toggle('is-on', k === i); });
+      sheets.forEach(function (p, k) { p.classList.toggle('is-on', k === i); });
+    }
+    show(0);
+    ScrollTrigger.create({
+      trigger: '.process', start: 'top top', end: '+=200%', pin: true, scrub: true,
+      onUpdate: function (self) { show(Math.min(steps.length - 1, Math.floor(self.progress * steps.length))); }
+    });
+
+    // Register: the two misaligned sheets meet; the stamp turns green at the end.
+    var stamp = document.getElementById('stamp');
+    gsap.set('.reg-a', { x: -26, y: -14, rotation: -3 });
+    gsap.set('.reg-b', { x: 22, y: 12, rotation: 2.5 });
+    gsap.timeline({
+      scrollTrigger: {
+        trigger: '.register', start: 'top top', end: '+=120%', pin: true, scrub: true,
+        onUpdate: function (self) { stamp.classList.toggle('is-registered', self.progress > 0.92); }
+      }
+    })
+      .to('.reg-a', { x: 0, y: 0, rotation: 0, ease: 'none' }, 0)
+      .to('.reg-b', { x: 0, y: 0, rotation: 0, ease: 'none' }, 0);
+
+    return function () { root.classList.remove('desk-pin'); };
+  });
+
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(function () { ScrollTrigger.refresh(); });
+  }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,628 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tecla Vermelha — Typewritten letters, never sent</title>
+<meta name="description" content="A typing office that types out the letters you decided not to send, and files the originals under lock.">
+<script>document.documentElement.classList.add('js');</script>
+<link href="https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&family=Newsreader:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --paper: #EFE8D8;
+  --surface: #E2D7BE;
+  --ink: #1B1A17;
+  --accent: #B3261E;
+  --status: #2F5D50;
+  --sheet: rgba(255, 252, 242, .55);
+  --rule: rgba(27, 26, 23, .14);
+  --ink-soft: rgba(27, 26, 23, .62);
+  --font-body: 'Courier Prime', 'Courier New', monospace;
+  --font-head: 'Newsreader', Georgia, serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background-color: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 17px;
+  line-height: 1.6;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  overflow-x: hidden;
+}
+
+a { color: var(--ink); }
+a:focus-visible, button:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+
+/* header */
+.top {
+  position: sticky; top: 0; z-index: 5;
+  display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 16px;
+  padding: 14px 0;
+  background: var(--paper);
+  border-bottom: 1px solid var(--rule);
+}
+.brand { font-family: var(--font-head); font-weight: 600; font-size: 22px; text-decoration: none; }
+.top nav a { font-size: 13px; margin-left: 16px; text-decoration: none; border-bottom: 1px solid transparent; }
+.top nav a:hover { border-bottom-color: var(--ink); }
+
+/* shared */
+section { position: relative; padding: 72px 0; }
+.sheet {
+  position: relative; max-width: 760px; margin: 0 auto;
+  background-color: var(--sheet);
+  background-image: repeating-linear-gradient(to bottom, transparent 0 31px, var(--rule) 31px 32px);
+  border: 1px solid var(--rule);
+  box-shadow: 0 1px 0 rgba(27, 26, 23, .06), 0 14px 24px -20px rgba(27, 26, 23, .45);
+  padding: clamp(28px, 5vw, 56px) clamp(20px, 5vw, 60px);
+  overflow: hidden;
+}
+.sheet::before {
+  content: ''; position: absolute; top: 0; bottom: 0;
+  left: clamp(10px, 3.5vw, 30px); width: 1px; background: rgba(27, 26, 23, .18);
+}
+.sheet > * { position: relative; }
+
+.kicker { font-size: 12px; text-transform: uppercase; letter-spacing: .14em; color: var(--ink-soft); margin: 0 0 18px; }
+.h2 { font-family: var(--font-head); font-weight: 600; font-size: clamp(34px, 6vw, 56px); line-height: 1.05; letter-spacing: -.015em; margin: 0 0 14px; }
+.body { max-width: 36em; margin: 0 0 12px; }
+
+/* typed text: word hover carbon shadow */
+.w { transition: text-shadow .35s ease; }
+@media (hover: hover) {
+  .w:hover { text-shadow: 1px 1px 0 rgba(27, 26, 23, .25), 2px 2px 0 rgba(27, 26, 23, .10); }
+}
+
+/* ink under typed text */
+.ink {
+  position: absolute; left: 0; right: 0; bottom: 6px; height: 16px; pointer-events: none;
+  background:
+    radial-gradient(ellipse at 22% 50%, rgba(27, 26, 23, .22), transparent 62%),
+    radial-gradient(ellipse at 70% 55%, rgba(27, 26, 23, .16), transparent 58%);
+  opacity: .8; transform-origin: 0 50%;
+}
+
+/* hero */
+.hero { min-height: 100vh; min-height: 100svh; display: flex; align-items: center; padding: 56px 0; }
+.hero .sheet { min-height: min(560px, 80svh); display: flex; flex-direction: column; justify-content: center; }
+.carriage {
+  position: absolute; left: 0; right: 0; top: 0; height: 4px; z-index: 2;
+  background: var(--accent);
+}
+.display {
+  font-family: var(--font-head); font-weight: 600;
+  font-size: clamp(42px, 9vw, 100px); line-height: 1.02; letter-spacing: -.02em;
+  margin: 0 0 .35em;
+}
+.lede { font-size: clamp(17px, 2.1vw, 21px); line-height: 1.55; max-width: 34em; margin: 0 0 .9em; }
+.scroll-cue { display: inline-block; margin-top: 18px; font-size: 13px; text-decoration: none; border-bottom: 1px solid var(--ink); align-self: flex-start; }
+
+/* how it works */
+.steps { list-style: none; margin: 28px 0 0; padding: 0; display: grid; gap: 30px; }
+.step { display: grid; grid-template-columns: auto 1fr; gap: 6px 18px; align-items: baseline; }
+.step-no { font-family: var(--font-head); font-weight: 600; font-size: 44px; line-height: 1; color: var(--ink); }
+.step p { margin: 0; }
+.step .step-title { font-weight: 700; }
+
+/* archive */
+.grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 22px 14px; margin-top: 30px; }
+@media (min-width: 720px) { .grid { grid-template-columns: repeat(4, 1fr); gap: 34px 22px; } }
+.envelope {
+  position: relative; aspect-ratio: 4 / 3; overflow: hidden;
+  background: var(--surface);
+  border: 1px solid rgba(27, 26, 23, .32);
+  padding: 12px; display: flex; flex-direction: column; justify-content: space-between;
+}
+.envelope:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+.flap {
+  position: absolute; left: 0; right: 0; top: 0; height: 50%;
+  background: rgba(27, 26, 23, .06);
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+  transition: transform .45s cubic-bezier(.2, .7, .2, 1);
+}
+.env-year { position: relative; font-family: var(--font-head); font-weight: 600; font-size: 28px; line-height: 1; margin-top: auto; }
+.env-no { position: relative; font-size: 11px; color: var(--ink-soft); }
+.carbon {
+  position: absolute; left: 12%; right: 12%; bottom: 8%; height: 40%;
+  background: var(--paper); border: 1px solid rgba(27, 26, 23, .3);
+  transform: translateY(110%);
+  transition: transform .55s cubic-bezier(.2, .7, .2, 1);
+  font-size: 10px; line-height: 1.3; padding: 6px; color: var(--ink-soft);
+}
+.envelope:hover .carbon, .envelope:focus-visible .carbon { transform: translateY(-4%); }
+.envelope:hover .flap, .envelope:focus-visible .flap { transform: translateY(-6%); }
+@media (hover: none) { .carbon { transform: translateY(-4%); } }
+
+/* machine */
+.machine { padding: 0; }
+.machine-stage { position: relative; padding: 72px 0; }
+.machine-inner { max-width: 1040px; margin: 0 auto; display: grid; gap: 28px; align-items: center; }
+@media (min-width: 900px) { .machine-inner { grid-template-columns: .85fr 1.15fr; gap: 48px; } }
+.machine-desk { position: relative; display: flex; flex-direction: column; align-items: center; }
+.letter {
+  position: relative; z-index: 2; width: min(520px, 100%); min-height: 210px;
+  background-color: var(--sheet);
+  background-image: repeating-linear-gradient(to bottom, transparent 0 25px, var(--rule) 25px 26px);
+  border: 1px solid var(--rule);
+  box-shadow: 0 10px 18px -14px rgba(27, 26, 23, .5);
+  padding: 26px 24px 18px 40px;
+  margin-bottom: -58px;
+  transform-origin: 50% 0;
+}
+.letter-text { margin: 0; font-size: 15px; line-height: 26px; }
+.typewriter { position: relative; z-index: 1; width: 100%; max-width: 440px; height: auto; display: block; }
+.typewriter .body-shape { fill: var(--surface); stroke: var(--ink); stroke-width: 2; }
+.typewriter .platen { fill: none; stroke: var(--ink); stroke-width: 3; }
+.typewriter .keys rect { fill: var(--paper); stroke: var(--ink); stroke-width: 1.2; }
+.typewriter .carriage-bar { fill: var(--accent); }
+.machine-ink { bottom: -10px; left: 6%; right: 6%; }
+
+@media (min-width: 768px) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .machine-stage { height: 100vh; height: 100svh; display: flex; align-items: center; padding: 56px 0; }
+}
+
+/* tariffs */
+.tariffs { list-style: none; padding: 0; margin: 28px 0 0; display: grid; gap: 28px; }
+.tariff h3 { font-family: var(--font-head); font-weight: 600; font-size: 30px; line-height: 1.1; margin: 0 0 4px; }
+.tariff .t-size { margin: 0 0 8px; color: var(--ink-soft); }
+.tariff-line { display: flex; align-items: baseline; gap: 8px; margin: 4px 0; }
+.leader { flex: 1; min-width: 24px; border-bottom: 2px dotted rgba(27, 26, 23, .5); transform: translateY(-4px); }
+.fine-print { font-size: 13px; color: var(--ink-soft); margin: 26px 0 0; max-width: 36em; }
+
+/* seal */
+.seal-stage { position: relative; height: 230px; margin: 30px 0 22px; display: grid; place-items: center; }
+.seal-letter {
+  position: absolute; top: 0; width: min(300px, 80%); height: 170px;
+  background: var(--paper); border: 1px solid var(--rule);
+  background-image: repeating-linear-gradient(to bottom, transparent 0 17px, var(--rule) 17px 18px);
+  background-position: 0 14px;
+}
+.seal-env {
+  position: absolute; bottom: 0; width: min(330px, 90%); height: 120px;
+  background: var(--surface); border: 1px solid rgba(27, 26, 23, .32);
+}
+.seal-env::before {
+  content: ''; position: absolute; left: 0; right: 0; top: 0; height: 50%;
+  background: rgba(27, 26, 23, .05); clip-path: polygon(0 0, 100% 0, 50% 100%);
+}
+.stamp {
+  position: absolute; right: 6%; top: 8%; z-index: 3;
+  color: var(--status); border: 3px solid var(--status);
+  padding: 6px 14px; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; font-size: 18px;
+  transform: rotate(-8deg); opacity: 0; background: transparent;
+}
+.btn-seal {
+  display: inline-block; font: inherit; font-size: 18px; letter-spacing: .08em;
+  padding: 16px 30px; border: 0; border-radius: 0; cursor: pointer;
+  background: var(--accent); color: var(--paper);
+}
+.btn-seal:disabled { cursor: default; opacity: .75; }
+.seal-status { min-height: 1.6em; margin: 14px 0 0; font-size: 14px; color: var(--ink-soft); }
+
+/* footer */
+.foot { padding: 40px 0 120px; font-size: 13px; color: var(--ink-soft); }
+.foot p { margin: 0 0 6px; }
+
+/* template notice, fixed bottom right */
+.template-notice {
+  position: fixed; right: max(16px, env(safe-area-inset-right, 0px)); bottom: 14px; z-index: 9;
+  margin: 0; font-size: 11px; line-height: 1.3; color: var(--ink); opacity: .6;
+  padding-left: 22px; max-width: calc(100vw - 40px); text-align: right;
+}
+.template-notice::before {
+  content: ''; position: absolute; left: 0; top: 50%; width: 14px; height: 2px;
+  background: var(--accent); transform: translateY(-50%);
+}
+
+/* small screens */
+@media (max-width: 767px) {
+  section { padding: 56px 0; }
+  .hero { padding: 40px 0; }
+  .sheet::before { display: none; }
+  .top nav a { margin-left: 0; margin-right: 14px; }
+  .step { grid-template-columns: 1fr; }
+  .step-no { font-size: 34px; }
+  .letter { min-height: 0; margin-bottom: -36px; }
+  .letter-text { font-size: 14px; line-height: 24px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <a class="brand" href="#top">Tecla Vermelha</a>
+  <nav aria-label="Main">
+    <a href="#how">Process</a>
+    <a href="#archive">Archive</a>
+    <a href="#prices">Prices</a>
+    <a href="#seal">Seal it</a>
+  </nav>
+</header>
+
+<main>
+
+  <!-- 1. Hero: blank sheet, the carriage types the tagline -->
+  <section class="hero" id="top">
+    <div class="sheet">
+      <span class="carriage" aria-hidden="true"></span>
+      <p class="kicker">Typing office, since 1961</p>
+      <h1 class="display" data-type aria-label="Type it. Don't send it.">Type it. Don't send it.</h1>
+      <p class="lede" data-type aria-label="We keep every letter you never sent, typed on a 1964 machine and filed under lock.">We keep every letter you never sent, typed on a 1964 machine and filed under lock.</p>
+      <p class="lede" data-type aria-label="One carbon copy goes home with you. The original stays in the drawer.">One carbon copy goes home with you. The original stays in the drawer.</p>
+      <a class="scroll-cue" href="#how">Read the process</a>
+    </div>
+  </section>
+
+  <!-- 2. How it works: the active step is the one at the centre of the screen -->
+  <section id="how">
+    <div class="sheet">
+      <p class="kicker">Process</p>
+      <h2 class="h2">How it works</h2>
+      <ol class="steps">
+        <li class="step">
+          <span class="step-no" aria-hidden="true">1</span>
+          <p class="step-title">Dictate.</p>
+          <p data-type>Say the letter out loud to the typist across the desk. Do not stop to correct yourself.</p>
+        </li>
+        <li class="step">
+          <span class="step-no" aria-hidden="true">2</span>
+          <p class="step-title">Type.</p>
+          <p data-type>The letter goes onto the machine once, with no backspace and no second draft.</p>
+        </li>
+        <li class="step">
+          <span class="step-no" aria-hidden="true">3</span>
+          <p class="step-title">File.</p>
+          <p data-type>The original is numbered, dated and locked in the drawer. You take the carbon home.</p>
+        </li>
+      </ol>
+      <span class="ink" data-ink aria-hidden="true"></span>
+    </div>
+  </section>
+
+  <!-- 3. The archive: one envelope per year -->
+  <section id="archive">
+    <div class="sheet">
+      <p class="kicker">Archive</p>
+      <h2 class="h2">The archive</h2>
+      <p class="body">Every original is numbered, dated and kept in steel. One drawer for each year, from 1961 to 1968.</p>
+      <div class="grid">
+        <article class="envelope" tabindex="0"><span class="flap" aria-hidden="true"></span><span class="env-no">No. 61-014</span><span class="env-year">1961</span><span class="carbon" aria-hidden="true">Carbon copy. Filed 14 March.</span></article>
+        <article class="envelope" tabindex="0"><span class="flap" aria-hidden="true"></span><span class="env-no">No. 62-203</span><span class="env-year">1962</span><span class="carbon" aria-hidden="true">Carbon copy. Filed 9 July.</span></article>
+        <article class="envelope" tabindex="0"><span class="flap" aria-hidden="true"></span><span class="env-no">No. 63-377</span><span class="env-year">1963</span><span class="carbon" aria-hidden="true">Carbon copy. Filed 22 May.</span></article>
+        <article class="envelope" tabindex="0"><span class="flap" aria-hidden="true"></span><span class="env-no">No. 64-412</span><span class="env-year">1964</span><span class="carbon" aria-hidden="true">Carbon copy. Filed 3 Oct.</span></article>
+        <article class="envelope" tabindex="0"><span class="flap" aria-hidden="true"></span><span class="env-no">No. 65-058</span><span class="env-year">1965</span><span class="carbon" aria-hidden="true">Carbon copy. Filed 17 Feb.</span></article>
+        <article class="envelope" tabindex="0"><span class="flap" aria-hidden="true"></span><span class="env-no">No. 66-291</span><span class="env-year">1966</span><span class="carbon" aria-hidden="true">Carbon copy. Filed 30 Aug.</span></article>
+        <article class="envelope" tabindex="0"><span class="flap" aria-hidden="true"></span><span class="env-no">No. 67-119</span><span class="env-year">1967</span><span class="carbon" aria-hidden="true">Carbon copy. Filed 11 Jan.</span></article>
+        <article class="envelope" tabindex="0"><span class="flap" aria-hidden="true"></span><span class="env-no">No. 68-846</span><span class="env-year">1968</span><span class="carbon" aria-hidden="true">Carbon copy. Filed 5 Dec.</span></article>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4. The machine: pinned on desktop, stacked on touch screens -->
+  <section class="machine" id="machine">
+    <div class="machine-stage">
+      <div class="sheet machine-inner">
+        <div>
+          <p class="kicker">Demonstration</p>
+          <h2 class="h2">The machine</h2>
+          <p class="body">A 1964 desk machine, one key at a time. The carriage moves as you scroll, and the letter fills in behind it.</p>
+          <span class="ink machine-ink" data-ink aria-hidden="true"></span>
+        </div>
+        <div class="machine-desk">
+          <div class="letter">
+            <p class="letter-text" aria-label="Dear Ruth, I never said it properly, so I am typing it now, one key at a time. The kettle is still on the shelf where you left it. I kept the receipt too. You do not have to answer. I only needed the whole thing down, to the last full stop. Yours, M.">Dear Ruth, I never said it properly, so I am typing it now, one key at a time. The kettle is still on the shelf where you left it. I kept the receipt too. You do not have to answer. I only needed the whole thing down, to the last full stop. Yours, M.</p>
+          </div>
+          <svg class="typewriter" viewBox="0 0 420 220" aria-hidden="true" focusable="false">
+            <rect class="platen" x="58" y="22" width="304" height="26" rx="13"/>
+            <g class="carriage-svg">
+              <rect class="carriage-bar" x="30" y="60" width="360" height="8"/>
+            </g>
+            <path class="body-shape" d="M24 92 H396 L414 196 H6 Z"/>
+            <g class="keys">
+              <rect x="44" y="118" width="26" height="18" rx="3"/><rect x="78" y="118" width="26" height="18" rx="3"/><rect x="112" y="118" width="26" height="18" rx="3"/><rect x="146" y="118" width="26" height="18" rx="3"/><rect x="180" y="118" width="26" height="18" rx="3"/><rect x="214" y="118" width="26" height="18" rx="3"/><rect x="248" y="118" width="26" height="18" rx="3"/><rect x="282" y="118" width="26" height="18" rx="3"/><rect x="316" y="118" width="26" height="18" rx="3"/><rect x="350" y="118" width="26" height="18" rx="3"/>
+              <rect x="60" y="144" width="26" height="18" rx="3"/><rect x="94" y="144" width="26" height="18" rx="3"/><rect x="128" y="144" width="26" height="18" rx="3"/><rect x="162" y="144" width="26" height="18" rx="3"/><rect x="196" y="144" width="26" height="18" rx="3"/><rect x="230" y="144" width="26" height="18" rx="3"/><rect x="264" y="144" width="26" height="18" rx="3"/><rect x="298" y="144" width="26" height="18" rx="3"/><rect x="332" y="144" width="26" height="18" rx="3"/>
+              <rect x="150" y="172" width="120" height="16" rx="3"/>
+            </g>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5. Prices -->
+  <section id="prices">
+    <div class="sheet">
+      <p class="kicker">Prices</p>
+      <h2 class="h2">Three sizes of letter</h2>
+      <p class="body">Every size includes a 30-minute session at the desk, one carbon copy on thin paper, and the original filed with its number and date.</p>
+      <ul class="tariffs">
+        <li class="tariff">
+          <h3 data-type>Note</h3>
+          <p class="t-size" data-type>Up to 80 words, one short page.</p>
+          <div class="tariff-line"><span data-type>Session and carbon copy</span><span class="leader" aria-hidden="true"></span><span data-type>$18</span></div>
+        </li>
+        <li class="tariff">
+          <h3 data-type>Page</h3>
+          <p class="t-size" data-type>Up to 350 words, one full sheet.</p>
+          <div class="tariff-line"><span data-type>Session and carbon copy</span><span class="leader" aria-hidden="true"></span><span data-type>$42</span></div>
+        </li>
+        <li class="tariff">
+          <h3 data-type>Long letter</h3>
+          <p class="t-size" data-type>Up to three pages, numbered in the margin.</p>
+          <div class="tariff-line"><span data-type>Session and two carbon copies</span><span class="leader" aria-hidden="true"></span><span data-type>$95</span></div>
+        </li>
+      </ul>
+      <p class="fine-print">Dictation or typing, your choice. Originals are kept for ten years in the drawer.</p>
+      <span class="ink" data-ink aria-hidden="true"></span>
+    </div>
+  </section>
+
+  <!-- 6. Seal it: the only action on the page, and it sends nothing -->
+  <section id="seal">
+    <div class="sheet">
+      <p class="kicker">Last step</p>
+      <h2 class="h2">Seal it</h2>
+      <p class="body">Press the button and the letter goes into its envelope and is filed. This page does not send anything anywhere. The original stays in our drawer.</p>
+      <div class="seal-stage" aria-hidden="true">
+        <div class="seal-letter" id="seal-letter"></div>
+        <div class="seal-env" id="seal-env"></div>
+        <span class="stamp" id="seal-stamp">Filed</span>
+      </div>
+      <button class="btn-seal" id="seal-btn" type="button">Seal it</button>
+      <p class="seal-status" id="seal-status" role="status" aria-live="polite"></p>
+    </div>
+  </section>
+
+</main>
+
+<footer class="foot">
+  <div class="sheet" style="padding:24px 28px">
+    <p>Tecla Vermelha, typing office on the fourth floor. Open Tuesday to Saturday.</p>
+    <p>Originals are filed with a number and a date. Carbon copies go home with you.</p>
+  </div>
+</footer>
+
+<p class="template-notice" id="template-notice">Template preview. Brand and copy are placeholders.</p>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.15.1/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.15.1/ScrollTrigger.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lenis@1.3.27/dist/lenis.min.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  var root = document.documentElement;
+  var SHOW_TEMPLATE_NOTICE = true; // build-time switch for the template notice
+
+  var notice = document.getElementById('template-notice');
+  if (notice && !SHOW_TEMPLATE_NOTICE) notice.parentNode.removeChild(notice);
+
+  /* Seal it: works with or without GSAP and with reduced motion */
+  var sealBtn = document.getElementById('seal-btn');
+  var sealLetter = document.getElementById('seal-letter');
+  var sealEnv = document.getElementById('seal-env');
+  var sealStamp = document.getElementById('seal-stamp');
+  var sealStatus = document.getElementById('seal-status');
+
+  function sealDone() {
+    sealBtn.textContent = 'Filed';
+    sealBtn.removeAttribute('aria-busy');
+    sealStatus.textContent = 'Filed in the drawer. Nothing was sent from this page.';
+  }
+
+  sealBtn.addEventListener('click', function () {
+    if (sealBtn.disabled) return;
+    sealBtn.disabled = true;
+    sealBtn.setAttribute('aria-busy', 'true');
+    sealBtn.textContent = 'Sealing...';
+    sealStatus.textContent = 'Sealing the letter.';
+
+    if (window.gsap && root.classList.contains('anim')) {
+      var tl = gsap.timeline({ onComplete: sealDone });
+      tl.to(sealLetter, { y: 80, scale: .2, opacity: 0, duration: .7, ease: 'power2.in' })
+        .to(sealEnv, { scale: 1.03, duration: .1, yoyo: true, repeat: 1, ease: 'power1.inOut' }, '>')
+        .fromTo(sealStamp, { opacity: 0, scale: 1.6 }, { opacity: 1, scale: 1, duration: .3, ease: 'power4.out' }, '>-0.05');
+    } else {
+      sealStamp.style.opacity = '1';
+      sealDone();
+    }
+  });
+
+  /* Everything below needs GSAP and motion; otherwise the page stays static */
+  var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduced || !window.gsap || !window.ScrollTrigger) return;
+
+  gsap.registerPlugin(ScrollTrigger);
+  root.classList.add('anim');
+
+  var finePointer = window.matchMedia('(pointer: fine)').matches;
+  var lenis = null;
+
+  function jitter() { return Math.random() < .5 ? -.5 : .5; }
+
+  // Breaks text into word and letter spans; screen readers get the full sentence from aria-label.
+  function splitChars(el) {
+    if (el.dataset.split) return el.querySelectorAll('.ch');
+    var text = el.textContent.replace(/\s+/g, ' ').trim();
+    if (!el.getAttribute('aria-label')) el.setAttribute('aria-label', text);
+    var chars = [];
+    el.textContent = '';
+    text.split(/( )/).forEach(function (part) {
+      if (!part) return;
+      if (part === ' ') { el.appendChild(document.createTextNode(' ')); return; }
+      var w = document.createElement('span');
+      w.className = 'w';
+      w.setAttribute('aria-hidden', 'true');
+      for (var i = 0; i < part.length; i++) {
+        var c = document.createElement('span');
+        c.className = 'ch';
+        c.textContent = part.charAt(i);
+        w.appendChild(c);
+        chars.push(c);
+      }
+      el.appendChild(w);
+    });
+    el.dataset.split = '1';
+    return chars;
+  }
+
+  // Keystroke: each letter appears with a half-pixel vertical knock.
+  function typeInto(tl, chars, each) {
+    if (!chars.length) return tl;
+    gsap.set(chars, { opacity: 0, y: jitter });
+    return tl.to(chars, {
+      opacity: 1, y: 0, duration: .04, ease: 'steps(1)',
+      stagger: { each: each, ease: 'none' }
+    });
+  }
+
+  // Carriage return: exits left with a jolt, re-enters from the right, ribbon blinks.
+  function carriageReturn(tl, carriage) {
+    return tl
+      .to(carriage, { xPercent: -100, duration: .28, ease: 'power4.in' })
+      .set(carriage, { xPercent: 100 })
+      .to(carriage, { xPercent: 0, duration: .5, ease: 'power2.out' })
+      .to(carriage, { opacity: .3, duration: .07, yoyo: true, repeat: 3, ease: 'none' });
+  }
+
+  function setupLenis() {
+    if (!window.Lenis || !finePointer) return;
+    lenis = new Lenis({ duration: 1.1, smoothWheel: true });
+    lenis.on('scroll', ScrollTrigger.update);
+    gsap.ticker.add(function (time) { lenis.raf(time * 1000); });
+    gsap.ticker.lagSmoothing(0);
+  }
+
+  function heroIntro() {
+    var carriage = document.querySelector('.hero .carriage');
+    var tl = gsap.timeline({ delay: .35 });
+    gsap.set(carriage, { xPercent: 100 });
+    tl.to(carriage, { xPercent: 0, duration: .6, ease: 'power2.out' });
+    document.querySelectorAll('.hero [data-type]').forEach(function (el, i) {
+      var chars = splitChars(el);
+      typeInto(tl, chars, i === 0 ? .05 : .02);
+      tl.to({}, { duration: .2 });
+      carriageReturn(tl, carriage);
+    });
+  }
+
+  // Other typed lines play once when they enter the screen.
+  function typedOnEnter() {
+    var small = window.innerWidth < 768;
+    document.querySelectorAll('[data-type]').forEach(function (el) {
+      if (el.closest('.hero') || el.closest('.machine')) return;
+      var chars = splitChars(el);
+      var tl = typeInto(gsap.timeline({ paused: true }), chars, small ? .03 : .016);
+      ScrollTrigger.create({
+        trigger: el, start: 'top 88%', once: true,
+        onEnter: function () { tl.play(); }
+      });
+    });
+  }
+
+  // Active step is the one at the centre of the screen.
+  function stepsScrub() {
+    document.querySelectorAll('.step').forEach(function (step) {
+      gsap.fromTo(step, { opacity: .35 }, {
+        opacity: 1, ease: 'none',
+        scrollTrigger: { trigger: step, start: 'top 65%', end: 'bottom 35%', scrub: true }
+      });
+    });
+  }
+
+  function inkScrub() {
+    document.querySelectorAll('[data-ink]').forEach(function (el) {
+      gsap.fromTo(el, { scaleX: 0 }, {
+        scaleX: 1, ease: 'none',
+        scrollTrigger: { trigger: el.parentElement, start: 'top 80%', end: 'bottom 45%', scrub: true }
+      });
+    });
+  }
+
+  function envelopesCascade() {
+    gsap.fromTo('.envelope', { opacity: 0, y: 24 }, {
+      opacity: 1, y: 0, duration: .6, ease: 'power2.out', stagger: .08,
+      scrollTrigger: { trigger: '.grid', start: 'top 82%', once: true }
+    });
+  }
+
+  // Desktop: pinned, letter typed by scroll, carriage moves with progress.
+  function machinePinned() {
+    var letter = document.querySelector('.letter');
+    var chars = splitChars(document.querySelector('.letter-text'));
+    gsap.set(chars, { opacity: 0 });
+    var tl = gsap.timeline({
+      defaults: { ease: 'none' },
+      scrollTrigger: {
+        trigger: '#machine', start: 'top top', end: '+=200%',
+        pin: '.machine-stage', scrub: .6, invalidateOnRefresh: true
+      }
+    });
+    tl.fromTo(letter, { opacity: .4, scaleY: .9 }, { opacity: 1, scaleY: 1, duration: .15 }, 0)
+      .to('.carriage-svg', { x: -110, duration: 1 }, 0)
+      .fromTo('.machine-ink', { scaleX: 0 }, { scaleX: 1, duration: 1 }, 0)
+      .to(chars, { opacity: 1, duration: .001, stagger: { each: .85 / Math.max(chars.length - 1, 1) } }, .05);
+    return function () { tl.kill(); };
+  }
+
+  // Touch and narrow screens: not pinned, the letter types when it enters.
+  function machineStatic() {
+    var chars = splitChars(document.querySelector('.letter-text'));
+    var tl = typeInto(gsap.timeline({ paused: true }), chars, .03);
+    ScrollTrigger.create({
+      trigger: '.letter', start: 'top 85%', once: true,
+      onEnter: function () { tl.play(); }
+    });
+  }
+
+  function init() {
+    setupLenis();
+    heroIntro();
+    typedOnEnter();
+    stepsScrub();
+    inkScrub();
+    envelopesCascade();
+
+    var mm = gsap.matchMedia();
+    mm.add('(min-width: 768px) and (pointer: fine)', function () { return machinePinned(); });
+    mm.add('(max-width: 767.98px), (pointer: coarse)', function () { machineStatic(); });
+
+    ScrollTrigger.refresh();
+  }
+
+  function ready(fn) {
+    var done = false;
+    function go() { if (!done) { done = true; fn(); } }
+    if (document.fonts && document.fonts.ready) {
+      Promise.race([
+        document.fonts.ready,
+        new Promise(function (resolve) { setTimeout(resolve, 2500); })
+      ]).then(go, go);
+    } else {
+      go();
+    }
+  }
+
+  ready(function () {
+    try {
+      init();
+    } catch (err) {
+      // Fall back to the static page if anything fails.
+      gsap.set('.ch, .envelope, .step, .tariff, .ink, .carriage, .carriage-svg', { clearProps: 'all' });
+      root.classList.remove('anim');
+    }
+  });
+})();
+</script>
+</body>
+</html>

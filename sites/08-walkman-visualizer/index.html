@@ -1,0 +1,664 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Rebobina Lenta — Audio-Reactive Tape Deck</title>
+<meta name="description" content="Rebobina Lenta records the message you cannot say out loud yet, on cassette tape, and posts it on the date you choose.">
+<meta name="theme-color" content="#1C1815">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=VT323&display=swap">
+<script type="importmap">
+{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.187.0/build/three.module.js" } }
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.15.1/gsap.min.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.15.1/ScrollTrigger.min.js" defer></script>
+<style>
+:root{
+  --bg:#1C1815;
+  --surface:#2B241F;
+  --text:#F2E8D5;
+  --accent:#FF7A1A;
+  --ok:#8FD19E;
+  --err:#E5534B;
+  --muted:rgba(242,232,213,.72);
+  --rule:rgba(242,232,213,.16);
+  --display:"VT323",ui-monospace,Consolas,monospace;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --wrap:1120px;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{background:var(--bg);color:var(--text);scroll-behavior:smooth;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+body{
+  margin:0;min-height:100vh;min-height:100svh;background:var(--bg);color:var(--text);
+  font-family:var(--sans);font-size:17px;line-height:1.6;-webkit-font-smoothing:antialiased;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));
+  padding-right:max(16px, env(safe-area-inset-right, 0px));
+  overflow-x:hidden;
+}
+a{color:inherit}
+button,input{font:inherit;color:inherit}
+p{margin:0 0 16px}
+
+/* 3D layer: fixed behind the content, hidden until WebGL is confirmed */
+#scene{position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;display:none}
+.gl #scene{display:block}
+
+body>header{position:sticky;top:0;z-index:2;background:linear-gradient(var(--bg) 75%, rgba(28,24,21,0))}
+main,footer{position:relative;z-index:1}
+header .wrap,main>section,footer .wrap{width:100%;max-width:var(--wrap);margin:0 auto}
+
+.top{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 0}
+.brand{font-family:var(--display);font-size:28px;letter-spacing:.06em;text-decoration:none;line-height:1}
+.nav{display:none;gap:24px;font-size:15px}
+.nav a{text-decoration:none;color:var(--muted)}
+.nav a:hover{color:var(--text)}
+@media (min-width:880px){.nav{display:flex}}
+
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;min-height:44px;
+  padding:12px 20px;border-radius:10px;border:0;cursor:pointer;text-decoration:none;
+  background:var(--accent);color:var(--bg);font-weight:600;font-size:16px;line-height:1.2;
+}
+.btn.ghost{background:transparent;color:var(--text);box-shadow:inset 0 0 0 1px var(--rule)}
+.btn.small{min-height:40px;padding:8px 14px;font-size:14px}
+.btn.big{font-size:19px;padding:16px 24px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn:focus-visible,.chip:focus-visible,.qa summary:focus-visible,.brand:focus-visible,.nav a:focus-visible,.btn:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.cta-row{display:flex;flex-wrap:wrap;gap:12px;margin-top:8px}
+
+/* Hero */
+.hero{
+  min-height:100vh;min-height:100svh;display:grid;align-content:end;gap:32px;
+  padding:50vh 0 64px;
+}
+.hero-copy{max-width:480px}
+.eyebrow,.kicker{font-family:var(--display);font-size:22px;letter-spacing:.08em;color:var(--accent);text-transform:uppercase;margin:0 0 14px;line-height:1}
+h1{font-size:clamp(36px,6.2vw,66px);font-weight:600;line-height:1.02;letter-spacing:-.025em;margin:0 0 20px}
+h2{font-size:clamp(30px,4.2vw,46px);font-weight:600;line-height:1.08;letter-spacing:-.02em;margin:0 0 18px}
+h3{font-size:20px;font-weight:600;line-height:1.25;margin:0 0 8px}
+.lead{font-size:clamp(19px,2.3vw,24px);font-weight:500;line-height:1.35;margin:0 0 14px}
+.sub{color:var(--muted)}
+.scroll-hint{font-family:var(--display);font-size:22px;color:var(--muted);margin:24px 0 0}
+
+.visor{
+  display:inline-flex;align-items:baseline;gap:12px;margin-top:10px;padding:10px 16px;border-radius:10px;
+  background:var(--surface);box-shadow:inset 0 0 0 1px var(--rule), 0 0 28px rgba(143,209,158,.08);
+}
+.visor-label,.visor-unit{font-family:var(--display);font-size:20px;color:var(--ok);opacity:.85;line-height:1}
+.visor-num{font-family:var(--display);font-size:58px;line-height:.9;color:var(--ok);text-shadow:0 0 12px rgba(143,209,158,.55);font-variant-numeric:tabular-nums}
+
+.hero-fallback{width:min(100%,360px);margin:0 auto;opacity:.95}
+.hero-fallback svg{width:100%;height:auto}
+.gl .hero-fallback{display:none}
+
+@media (min-width:900px){
+  .hero{grid-template-columns:minmax(0,480px) minmax(0,1fr);align-items:end;padding:150px 0 72px}
+  .hero-fallback{grid-column:2;margin:0}
+  .scroll-hint{margin-top:28px}
+}
+
+/* Blocks */
+.block{padding:84px 0;border-top:1px solid var(--rule)}
+.block>*{max-width:560px}
+.block p{color:var(--muted)}
+.block p.plain{color:var(--text)}
+
+/* How the tape arrives */
+.tape-progress{height:6px;border-radius:3px;background:var(--surface);overflow:hidden;margin:0 0 28px;max-width:560px}
+.tape-progress span{display:block;height:100%;background:var(--accent);transform-origin:0 50%;transform:scaleX(0)}
+.steps{list-style:none;padding:0;margin:0;display:grid;gap:16px;max-width:560px}
+.step{padding:18px 20px;border-radius:12px;background:var(--surface);box-shadow:inset 0 0 0 1px var(--rule);opacity:.5;transition:opacity .4s ease, box-shadow .4s ease}
+.step.lit{opacity:1;box-shadow:inset 3px 0 0 var(--accent), inset 0 0 0 1px var(--rule)}
+.step .num{display:block;font-family:var(--display);font-size:34px;line-height:1;color:var(--muted);margin-bottom:8px}
+.step.lit .num{color:var(--ok);text-shadow:0 0 10px rgba(143,209,158,.45)}
+.step p{margin:0;font-size:16px}
+
+/* Delay */
+.dial-row{display:flex;align-items:center;gap:24px;flex-wrap:wrap;margin:8px 0 24px}
+.knob{
+  position:relative;width:92px;height:92px;flex:0 0 auto;border-radius:50%;
+  background:radial-gradient(circle at 36% 30%, #3B3129, var(--surface) 62%);
+  box-shadow:inset 0 0 0 1px var(--rule), 0 8px 16px rgba(0,0,0,.35);
+  transition:transform .5s cubic-bezier(.2,.7,.2,1);
+}
+.knob::after{content:"";position:absolute;left:50%;top:8px;width:4px;height:26px;margin-left:-2px;border-radius:2px;background:var(--accent)}
+.choices{display:flex;flex-wrap:wrap;gap:10px}
+.chip{
+  min-width:44px;min-height:44px;padding:10px 18px;border-radius:999px;cursor:pointer;
+  background:var(--surface);color:var(--text);border:1px solid var(--rule);font-size:16px;font-weight:500;
+}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--bg);font-weight:600}
+
+/* Listen */
+.play-row{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.msg{min-height:1.6em;font-size:15px;color:var(--muted);margin:14px 0 4px}
+.msg.err{color:var(--err)}
+.meter{display:flex;align-items:flex-end;gap:4px;width:min(100%,360px);height:76px;padding:10px;border-radius:10px;background:var(--surface);box-shadow:inset 0 0 0 1px var(--rule);margin:12px 0 10px}
+.meter i{flex:1 1 0;height:100%;background:var(--ok);border-radius:2px;transform-origin:50% 100%;transform:scaleY(.08);opacity:.9}
+.readout{font-family:var(--display);font-size:24px;color:var(--ok);margin:0 0 18px;line-height:1}
+.vol{display:flex;align-items:center;gap:14px;flex-wrap:wrap;font-size:15px;color:var(--muted)}
+.vol input{width:min(100%,260px);accent-color:var(--accent);min-height:44px}
+
+/* Questions */
+.qa{border-top:1px solid var(--rule)}
+.qa:last-child{border-bottom:1px solid var(--rule)}
+.qa summary{position:relative;list-style:none;cursor:pointer;min-height:44px;padding:16px 40px 16px 0;font-size:18px;font-weight:600;display:flex;align-items:center}
+.qa summary::-webkit-details-marker{display:none}
+.qa summary::after{content:"+";position:absolute;right:4px;top:50%;transform:translateY(-50%);font-family:var(--display);font-size:32px;line-height:1;color:var(--accent)}
+.qa[open] summary::after{content:"-"}
+.qa p{margin:0 0 18px;color:var(--muted);font-size:16px}
+
+/* Footer */
+footer .wrap{padding:40px 0 48px;border-top:1px solid var(--rule)}
+footer p{margin:0 0 8px;font-size:15px}
+.template-note{font-size:13px !important;color:var(--text);opacity:.5;margin-top:16px !important}
+
+/* Hide opaque backgrounds on small screens so the scene reads only in the hero */
+@media (max-width:899px){
+  .block,footer{background:var(--bg)}
+  .block{padding:60px 0}
+}
+
+@media (prefers-reduced-motion: reduce){
+  html{scroll-behavior:auto}
+  *,*::before,*::after{animation:none !important;transition:none !important}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap top">
+    <a class="brand" href="#top">Rebobina Lenta</a>
+    <nav class="nav" aria-label="Page sections">
+      <a href="#how">How it works</a>
+      <a href="#delay">Delay</a>
+      <a href="#listen">Listen</a>
+      <a href="#questions">Questions</a>
+    </nav>
+    <a class="btn small" href="#order">Order a tape</a>
+  </div>
+</header>
+
+<main>
+  <section id="top" class="wrap hero">
+    <div class="hero-copy">
+      <p class="eyebrow">Recorded tape, delivered late</p>
+      <h1>Some, the way tape arrives.</h1>
+      <p class="lead">Say it out loud now, and let us hold it for ninety days.</p>
+      <p class="sub">Your message, recorded on tape, delivered on the date you choose.</p>
+      <div class="cta-row">
+        <a class="btn" href="#delay">Choose the delay</a>
+        <a class="btn ghost" href="#listen">Listen first</a>
+      </div>
+      <div class="visor" aria-label="Days of delay">
+        <span class="visor-label">DELAY</span>
+        <span class="visor-num" data-counter>000</span>
+        <span class="visor-unit">days</span>
+      </div>
+      <p class="scroll-hint">Scroll to open the case</p>
+    </div>
+
+    <figure class="hero-fallback" aria-hidden="true">
+      <svg viewBox="0 0 360 230" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Closed cassette case">
+        <rect x="8" y="10" width="344" height="210" rx="16" fill="#2B241F" stroke="rgba(242,232,213,.16)"/>
+        <rect x="40" y="36" width="280" height="62" rx="6" fill="#F2E8D5"/>
+        <rect x="56" y="56" width="120" height="8" rx="2" fill="#1C1815" opacity=".5"/>
+        <rect x="46" y="112" width="268" height="90" rx="10" fill="#1C1815"/>
+        <circle cx="120" cy="157" r="34" fill="#FF7A1A" opacity=".9"/>
+        <circle cx="240" cy="157" r="34" fill="#FF7A1A" opacity=".9"/>
+        <circle cx="120" cy="157" r="10" fill="#F2E8D5"/>
+        <circle cx="240" cy="157" r="10" fill="#F2E8D5"/>
+        <rect x="150" y="150" width="60" height="14" rx="3" fill="#2B241F"/>
+      </svg>
+    </figure>
+  </section>
+
+  <section id="how" class="wrap block">
+    <p class="kicker">Process</p>
+    <h2>How the tape arrives</h2>
+    <div class="tape-progress" aria-hidden="true"><span id="tape-bar"></span></div>
+    <ol class="steps">
+      <li class="step">
+        <span class="num">001</span>
+        <h3>You speak</h3>
+        <p>Dictate the message you cannot say out loud yet. Take your time. We keep the words as you said them.</p>
+      </li>
+      <li class="step">
+        <span class="num">002</span>
+        <h3>We record it</h3>
+        <p>A narrator from our house reads it onto cassette tape in one take, then writes the label by hand.</p>
+      </li>
+      <li class="step">
+        <span class="num">003</span>
+        <h3>It waits</h3>
+        <p>The tape stays in its case until the date printed on the box. Then it goes out by post.</p>
+      </li>
+    </ol>
+  </section>
+
+  <section id="delay" class="wrap block">
+    <p class="kicker">Step two</p>
+    <h2>Choose the delay</h2>
+    <p>Thirty, sixty or ninety days. Pick one and the knob turns to match. The price appears at the end of the order, not here.</p>
+    <div class="dial-row">
+      <div class="knob" id="knob" aria-hidden="true"></div>
+      <div class="visor" aria-label="Chosen delay in days">
+        <span class="visor-label">DELAY</span>
+        <span class="visor-num" data-counter>090</span>
+        <span class="visor-unit">days</span>
+      </div>
+    </div>
+    <div class="choices" role="group" aria-label="Delay in days">
+      <button type="button" class="chip" data-days="30" aria-pressed="false">30 days</button>
+      <button type="button" class="chip" data-days="60" aria-pressed="false">60 days</button>
+      <button type="button" class="chip" data-days="90" aria-pressed="true">90 days</button>
+    </div>
+  </section>
+
+  <section id="listen" class="wrap block">
+    <p class="kicker">Only section with sound</p>
+    <h2>Listen to the tape</h2>
+    <p>Nothing plays until you press the button. The tape carries a low hiss and a recording tone, kept quiet by default.</p>
+    <div class="play-row">
+      <button type="button" id="play" class="btn" aria-pressed="false">Listen to the tape</button>
+    </div>
+    <p id="play-msg" class="msg" role="status" aria-live="polite"></p>
+    <div class="meter" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    <p class="readout">LEVEL <span id="level-num">00</span></p>
+    <label class="vol">
+      <span>Volume</span>
+      <input id="vol" type="range" min="0" max="0.5" step="0.01" value="0.15">
+    </label>
+  </section>
+
+  <section id="questions" class="wrap block">
+    <p class="kicker">Before you order</p>
+    <h2>Questions about the tape</h2>
+    <details class="qa">
+      <summary>Can the tape be sent back?</summary>
+      <p>Yes, unopened, within 14 days of delivery. Once the date on the box has passed, the tape is yours to keep.</p>
+    </details>
+    <details class="qa">
+      <summary>Can the delay be shortened?</summary>
+      <p>Not after payment. You can change the delay once before you pay, and the label is written again with the new date.</p>
+    </details>
+    <details class="qa">
+      <summary>Who narrates the tape?</summary>
+      <p>A narrator from our house reads every tape. The words stay yours; only the voice is ours.</p>
+    </details>
+  </section>
+
+  <section id="order" class="wrap block">
+    <p class="kicker">Last step</p>
+    <h2>Send it later.</h2>
+    <p>A tape in a plastic case, a label written by hand, and the arrival date printed on the box.</p>
+    <a class="btn big" href="order/">Order a tape for <span data-counter-order>90</span> days</a>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p>Rebobina Lenta. Recorded on tape, delivered by post.</p>
+    <p class="template-note">Construction template. Brand and copy are invented placeholders; verify the name Rebobina Lenta before use.</p>
+  </div>
+</footer>
+
+<canvas id="scene" aria-hidden="true"></canvas>
+
+<script>
+/* Shared state and audio. Audio is created and resumed only inside the button click. */
+(function(){
+  'use strict';
+  var reduce = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+  var state = { open: reduce ? 1 : 0, days: reduce ? 90 : 0, tape: reduce ? 1 : 0 };
+  var AC = window.AudioContext || window.webkitAudioContext;
+  var ctx = null, master = null, analyser = null, freq = null, playing = false, meterTimer = 0, chosen = 90;
+
+  function $(s){ return document.querySelector(s); }
+  function $$(s){ return Array.prototype.slice.call(document.querySelectorAll(s)); }
+
+  var playBtn = $('#play'), msg = $('#play-msg'), vol = $('#vol'), levelNum = $('#level-num');
+  var bars = $$('.meter i'), counters = $$('[data-counter]'), orderCounters = $$('[data-counter-order]');
+  var chips = $$('[data-days]'), steps = $$('.step'), knob = $('#knob'), tapeBar = $('#tape-bar');
+  var lastKey = '';
+
+  function sync(){
+    var d = Math.round(state.days), t = Math.round(state.tape * 100);
+    var key = d + '|' + t + '|' + chosen;
+    if (key === lastKey) return;
+    lastKey = key;
+    var txt = ('00' + d).slice(-3);
+    for (var i = 0; i < counters.length; i++) counters[i].textContent = txt;
+    for (var j = 0; j < orderCounters.length; j++) orderCounters[j].textContent = String(chosen);
+    if (knob) knob.style.transform = 'rotate(' + ((state.days - 60) / 30 * 60).toFixed(1) + 'deg)';
+    if (tapeBar) tapeBar.style.transform = 'scaleX(' + state.tape.toFixed(3) + ')';
+    for (var k = 0; k < steps.length; k++) steps[k].classList.toggle('lit', state.tape >= (k + 0.5) / 3);
+  }
+
+  function avg(a, from, to){
+    var s = 0;
+    for (var i = from; i < to; i++) s += a[i];
+    return s / (to - from) / 255;
+  }
+
+  function spectrum(){
+    var out = { bass: 0, mid: 0, treble: 0, level: 0 };
+    if (!analyser || !playing) return out;
+    analyser.getByteFrequencyData(freq);
+    out.bass = avg(freq, 0, 4);
+    out.mid = avg(freq, 4, 40);
+    out.treble = avg(freq, 40, 120);
+    out.level = avg(freq, 0, 120);
+    return out;
+  }
+
+  function meterTick(){
+    var s = spectrum();
+    if (!reduce) {
+      for (var i = 0; i < bars.length; i++) {
+        var v = playing ? Math.min(1, avg(freq, i * 10, i * 10 + 10) * 1.8 + 0.06) : 0.08;
+        bars[i].style.transform = 'scaleY(' + v.toFixed(3) + ')';
+      }
+    }
+    levelNum.textContent = ('00' + Math.min(99, Math.round(s.level * 160))).slice(-2);
+  }
+
+  function build(){
+    ctx = new AC();
+    master = ctx.createGain();
+    master.gain.value = Number(vol.value);
+    analyser = ctx.createAnalyser();
+    analyser.fftSize = 512;
+    analyser.smoothingTimeConstant = 0.7;
+    freq = new Uint8Array(analyser.frequencyBinCount);
+
+    var len = ctx.sampleRate * 2;
+    var buf = ctx.createBuffer(1, len, ctx.sampleRate);
+    var data = buf.getChannelData(0);
+    for (var i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+    var hiss = ctx.createBufferSource();
+    hiss.buffer = buf;
+    hiss.loop = true;
+    var hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 1800;
+    var lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 9000;
+    var hissGain = ctx.createGain(); hissGain.gain.value = 0.25;
+    var tone = ctx.createOscillator(); tone.type = 'sine'; tone.frequency.value = 1000;
+    var toneGain = ctx.createGain(); toneGain.gain.value = 0.05;
+
+    hiss.connect(hp); hp.connect(lp); lp.connect(hissGain); hissGain.connect(master);
+    tone.connect(toneGain); toneGain.connect(master);
+    master.connect(analyser);
+    analyser.connect(ctx.destination);
+    hiss.start();
+    tone.start();
+  }
+
+  function fail(text){
+    msg.textContent = text;
+    msg.className = 'msg err';
+    playBtn.disabled = true;
+  }
+
+  if (playBtn) playBtn.addEventListener('click', function(){
+    if (!AC) { fail('This browser does not play the tape.'); return; }
+    try {
+      if (!ctx) build();
+      if (playing) { ctx.suspend(); playing = false; }
+      else { ctx.resume(); playing = true; }
+    } catch (e) {
+      fail('This browser does not play the tape.');
+      return;
+    }
+    playBtn.setAttribute('aria-pressed', String(playing));
+    playBtn.textContent = playing ? 'Pause the tape' : 'Listen to the tape';
+    msg.className = 'msg';
+    msg.textContent = playing ? 'Playing at a low level.' : 'Paused.';
+    if (playing) { if (!meterTimer) meterTimer = setInterval(meterTick, 100); }
+    else { clearInterval(meterTimer); meterTimer = 0; meterTick(); }
+  });
+
+  if (vol) vol.addEventListener('input', function(){
+    var v = Number(vol.value);
+    vol.setAttribute('aria-valuetext', Math.round(v / 0.5 * 100) + ' percent');
+    if (master) master.gain.setTargetAtTime(v, ctx.currentTime, 0.02);
+  });
+
+  chips.forEach(function(c){
+    c.addEventListener('click', function(){
+      chosen = Number(c.getAttribute('data-days'));
+      state.days = chosen;
+      chips.forEach(function(x){ x.setAttribute('aria-pressed', String(x === c)); });
+      sync();
+    });
+  });
+
+  if (vol) vol.setAttribute('aria-valuetext', '30 percent');
+  window.RL = { state: state, reduce: reduce, sync: sync, spectrum: spectrum };
+  sync();
+})();
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+
+const RL = window.RL;
+const html = document.documentElement;
+const canvas = document.getElementById('scene');
+if (!RL || !canvas) throw new Error('Scene prerequisites missing');
+
+let renderer = null;
+try {
+  renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
+} catch (err) {
+  renderer = null;
+}
+if (renderer) boot(renderer);
+
+function boot(renderer){
+  html.classList.add('gl');
+  renderer.setClearColor(0x000000, 0);
+
+  const C = { bg: 0x1C1815, surface: 0x2B241F, text: 0xF2E8D5, accent: 0xFF7A1A, ok: 0x8FD19E, visorOff: 0x33291F };
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 100);
+  camera.position.set(0, 0, 7);
+
+  scene.add(new THREE.AmbientLight(0xFFF1DE, 0.9));
+  const key = new THREE.DirectionalLight(0xFFE6C4, 1.8);
+  key.position.set(3, 4, 6);
+  scene.add(key);
+  const glow = new THREE.PointLight(C.accent, 0.8, 14);
+  glow.position.set(-2.2, -1.2, 3.2);
+  scene.add(glow);
+
+  const deck = new THREE.Group();
+  scene.add(deck);
+
+  const shell = new THREE.Mesh(
+    new THREE.BoxGeometry(2.6, 1.7, 0.42),
+    new THREE.MeshStandardMaterial({ color: C.surface, roughness: 0.78, metalness: 0 })
+  );
+  deck.add(shell);
+
+  const windowMesh = new THREE.Mesh(new THREE.PlaneGeometry(1.9, 0.85), new THREE.MeshBasicMaterial({ color: C.bg }));
+  windowMesh.position.set(0, -0.12, 0.212);
+  deck.add(windowMesh);
+
+  // Lid hinges on its top edge and tilts back as the scroll opens it
+  const lidPivot = new THREE.Group();
+  lidPivot.position.set(0, 0.85, 0.235);
+  deck.add(lidPivot);
+  const lid = new THREE.Mesh(
+    new THREE.BoxGeometry(2.6, 1.7, 0.04),
+    new THREE.MeshStandardMaterial({ color: C.surface, roughness: 0.6 })
+  );
+  lid.position.set(0, -0.85, 0);
+  lidPivot.add(lid);
+
+  const label = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 0.52), new THREE.MeshBasicMaterial({ color: C.text }));
+  label.position.set(-0.3, -0.42, 0.0215);
+  lidPivot.add(label);
+
+  const visorMat = new THREE.MeshBasicMaterial({ color: C.visorOff });
+  const visor = new THREE.Mesh(new THREE.PlaneGeometry(0.62, 0.26), visorMat);
+  visor.position.set(0.72, -0.42, 0.0215);
+  lidPivot.add(visor);
+
+  function makeReel(x){
+    const g = new THREE.Group();
+    g.position.set(x, -0.12, 0.222);
+    deck.add(g);
+    const spin = new THREE.Group();
+    g.add(spin);
+    const pack = new THREE.Mesh(
+      new THREE.CylinderGeometry(1, 1, 0.02, 48),
+      new THREE.MeshBasicMaterial({ color: C.accent })
+    );
+    pack.rotation.x = Math.PI / 2;
+    spin.add(pack);
+    const hub = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.13, 0.13, 0.03, 28),
+      new THREE.MeshBasicMaterial({ color: C.text })
+    );
+    hub.rotation.x = Math.PI / 2;
+    hub.position.z = 0.012;
+    spin.add(hub);
+    for (let k = 0; k < 3; k++) {
+      const a = k * Math.PI * 2 / 3;
+      const rib = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.04, 0.012), new THREE.MeshBasicMaterial({ color: C.bg }));
+      rib.position.set(Math.cos(a) * 0.09, Math.sin(a) * 0.09, 0.03);
+      rib.rotation.z = a;
+      spin.add(rib);
+    }
+    return { spin: spin, pack: pack };
+  }
+  const left = makeReel(-0.5);
+  const right = makeReel(0.5);
+
+  const N = 24;
+  function makeTapeLine(){
+    const geo = new THREE.BufferGeometry();
+    const arr = new Float32Array(N * 3);
+    for (let k = 0; k < N; k++) arr[k * 3 + 2] = 0.232;
+    geo.setAttribute('position', new THREE.BufferAttribute(arr, 3));
+    const line = new THREE.Line(geo, new THREE.LineBasicMaterial({ color: C.accent }));
+    deck.add(line);
+    return line;
+  }
+  const leftLine = makeTapeLine();
+  const rightLine = makeTapeLine();
+
+  function updateLine(line, cx, topY, amp, phase){
+    const a = line.geometry.attributes.position.array;
+    for (let k = 0; k < N; k++) {
+      const f = k / (N - 1);
+      a[k * 3] = cx + Math.sin(f * 6 + phase) * 0.035 * (0.3 + amp);
+      a[k * 3 + 1] = topY + f * (0.08 + amp * 1.1);
+      a[k * 3 + 2] = 0.232;
+    }
+    line.geometry.attributes.position.needsUpdate = true;
+  }
+
+  function packRadius(t){ return 0.2 + 0.26 * t; }
+
+  // Layout: cassette on the right on desktop, centred above the copy on phones
+  let base = 1;
+  function layout(){
+    const w = window.innerWidth, h = window.innerHeight;
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+    const halfW = 7 * Math.tan(THREE.MathUtils.degToRad(17.5)) * camera.aspect;
+    const mobile = w < 900;
+    if (mobile) {
+      base = Math.min(1, (halfW * 0.8) / 1.4);
+      deck.position.set(0, 1.25, 0);
+    } else {
+      base = w < 1200 ? 0.8 : 1;
+      deck.position.set(Math.min(2.1, halfW * 0.56), 0, 0);
+    }
+    deck.scale.setScalar(base);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, mobile ? 1.5 : 2));
+    renderer.setSize(w, h, false);
+    renderer.render(scene, camera);
+  }
+
+  // Pointer tilt: the case turns toward the pointer
+  let tgtY = 0, curY = 0;
+  if (!RL.reduce) {
+    window.addEventListener('pointermove', function(e){ tgtY = (e.clientX / window.innerWidth - 0.5) * 0.6; }, { passive: true });
+    window.addEventListener('pointerout', function(e){ if (!e.relatedTarget) tgtY = 0; }, { passive: true });
+  }
+
+  const st = RL.state;
+  const dim = new THREE.Color(C.visorOff), lit = new THREE.Color(C.ok), tmp = new THREE.Color();
+  let raf = 0, last = performance.now(), clock = 0;
+
+  function frame(now){
+    if (document.hidden) { raf = 0; return; }
+    raf = requestAnimationFrame(frame);
+    const dt = Math.min(0.05, (now - last) / 1000);
+    last = now;
+    clock += dt;
+
+    const s = RL.spectrum();
+
+    const spinSpeed = 0.5 + s.bass * 5;
+    left.spin.rotation.z -= dt * spinSpeed;
+    right.spin.rotation.z -= dt * spinSpeed;
+    left.pack.scale.set(packRadius(1 - st.tape), 1, packRadius(1 - st.tape));
+    right.pack.scale.set(packRadius(st.tape), 1, packRadius(st.tape));
+
+    lidPivot.rotation.x = st.open * 2.5;
+
+    curY += (tgtY - curY) * 0.06;
+    deck.rotation.y = curY;
+    deck.scale.setScalar(base * (1 + s.bass * 0.05));
+
+    glow.intensity = 0.5 + s.mid * 1.6;
+    tmp.copy(dim).lerp(lit, Math.min(1, 0.12 + s.mid * 1.6));
+    visorMat.color.copy(tmp);
+
+    updateLine(leftLine, -0.5, -0.12 + packRadius(1 - st.tape), s.treble, clock * 4);
+    updateLine(rightLine, 0.5, -0.12 + packRadius(st.tape), s.treble, clock * 4 + 1.7);
+
+    renderer.render(scene, camera);
+    RL.sync();
+  }
+
+  layout();
+  window.addEventListener('resize', layout);
+
+  if (RL.reduce) {
+    // Final state, no motion: the lid is open and the reels are still
+    RL.sync();
+    return;
+  }
+
+  if (window.gsap && window.ScrollTrigger) {
+    gsap.registerPlugin(ScrollTrigger);
+    gsap.timeline({ scrollTrigger: { trigger: '#top', start: 'top top', end: 'bottom top', scrub: 0.6 } })
+      .to(st, { open: 1, days: 90, ease: 'none', onUpdate: RL.sync }, 0);
+    gsap.to(st, {
+      tape: 1, ease: 'none', onUpdate: RL.sync,
+      scrollTrigger: { trigger: '#how', start: 'top 70%', end: 'bottom 45%', scrub: true }
+    });
+  } else {
+    // Fallback without GSAP: the hero still opens with the scroll
+    window.addEventListener('scroll', function(){
+      const p = Math.min(1, Math.max(0, window.scrollY / window.innerHeight));
+      st.open = p;
+      st.days = Math.round(90 * p);
+      RL.sync();
+    }, { passive: true });
+  }
+
+  document.addEventListener('visibilitychange', function(){
+    if (!document.hidden && !raf) raf = requestAnimationFrame(frame);
+  });
+  raf = requestAnimationFrame(frame);
+}
+</script>
+</body>
+</html>

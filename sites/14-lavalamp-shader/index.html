@@ -1,0 +1,602 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mirrel — Lava lamp, slow time</title>
+<meta name="description" content="Mirrel rents hand-tuned lava lamps on a warm-up calendar. One lamp, one cycle, nothing to notify you.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bagel+Fat+One&family=Work+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #1B0F0A;
+  --surface: #2E1A12;
+  --surface-rgb: 46 26 18;
+  --text: #F4E6CF;
+  --accent: #FF6A1F;
+  --status: #E8B931;
+  --display: "Bagel Fat One", "Arial Black", Impact, sans-serif;
+  --body: "Work Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { background: var(--bg); -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--body);
+  font-size: 17px;
+  line-height: 1.6;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2 {
+  font-family: var(--display);
+  font-weight: 400;
+  line-height: 1.02;
+  letter-spacing: 0.01em;
+  margin: 0 0 0.45em;
+  overflow-wrap: anywhere;
+  color: var(--text);
+}
+h1 { font-size: clamp(40px, 11vw, 160px); }
+h2 { font-size: clamp(32px, 6.5vw, 80px); }
+
+p { margin: 0 0 1em; max-width: 36em; overflow-wrap: anywhere; }
+
+/* Fallback backdrop: the five colours as a static radial gradient (no WebGL). */
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background: radial-gradient(ellipse 70% 60% at 50% 60%,
+    var(--accent) 0%, var(--status) 14%, var(--surface) 48%, var(--bg) 85%);
+}
+
+canvas#lava {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
+  z-index: 1;
+  display: none;
+  pointer-events: none;
+}
+canvas#lava.is-live { display: block; }
+
+main, footer { position: relative; z-index: 2; }
+
+section {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  padding: 12vh 0;
+}
+
+.panel {
+  background: rgb(var(--surface-rgb) / 0.9);
+  padding: clamp(20px, 5vw, 40px);
+  border-radius: 6px;
+  max-width: min(36rem, 100%);
+}
+
+.kicker {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--status);
+  margin: 0 0 1em;
+}
+
+.small { font-size: 14px; color: var(--text); opacity: 0.85; }
+
+.template-note {
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  color: var(--text);
+  opacity: 0.85;
+  margin: 0;
+  max-width: none;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  max-width: 100%;
+  padding: 12px 24px;
+  border: 2px solid var(--accent);
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--bg);
+  font: 500 16px/1.2 var(--body);
+  letter-spacing: 0.04em;
+  text-decoration: none;
+  cursor: pointer;
+}
+.btn:hover { background: var(--status); border-color: var(--status); }
+.btn.is-warming { background: var(--status); border-color: var(--status); color: var(--bg); }
+
+.cycle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0 0 1.2em;
+}
+.cycle button {
+  min-height: 44px;
+  padding: 10px 20px;
+  border: 2px solid var(--text);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text);
+  font: 500 15px/1.2 var(--body);
+  cursor: pointer;
+}
+.cycle button[aria-pressed="true"] {
+  background: var(--status);
+  border-color: var(--status);
+  color: var(--bg);
+}
+
+.control { display: grid; gap: 10px; margin: 1.5em 0; }
+.control label {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-weight: 500;
+}
+.control output { color: var(--status); }
+input[type="range"] {
+  width: 100%;
+  min-height: 32px;
+  accent-color: var(--accent);
+}
+
+.plain { list-style: none; padding: 0; margin: 0 0 1.4em; }
+.plain li {
+  padding: 10px 0;
+  border-top: 1px solid rgb(244 230 207 / 0.25);
+}
+
+.object {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 4px 0;
+  margin: 0 0 1.4em;
+}
+.object dt {
+  font-size: 12px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--status);
+  margin-top: 12px;
+}
+.object dd { margin: 0; font-size: 18px; }
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 18px;
+  margin: 0 0 1.2em;
+}
+.status { margin: 0; color: var(--status); min-height: 1.6em; }
+
+footer.foot {
+  margin: 0;
+  padding: 16px;
+  background: var(--surface);
+}
+
+:focus-visible {
+  outline: 3px solid var(--status);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition: none !important;
+    animation: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+</style>
+</head>
+<body>
+<div class="backdrop" aria-hidden="true"></div>
+<canvas id="lava" aria-hidden="true"></canvas>
+
+<main>
+  <section class="hero" data-heat-from="0.1" data-heat-to="0.1">
+    <div class="panel">
+      <h1>Slow time, by the month.</h1>
+      <p class="reveal">One lamp. One warm-up schedule. Nothing to notify you.</p>
+      <a class="btn" href="#subscribe">Start your cycle.</a>
+    </div>
+  </section>
+
+  <section id="session" data-heat-from="0.1" data-heat-to="0.4">
+    <div class="panel">
+      <p class="kicker reveal">The session card</p>
+      <h2 class="reveal">Forty minutes, one lamp.</h2>
+      <p class="reveal">A session is one card of forty-minute sittings.</p>
+      <p class="reveal">Sit in a dim room with the lamp on.</p>
+      <p class="reveal">Watch the wax. Nothing else asks for you.</p>
+      <p class="reveal">No screen. No notifications. No timer to watch.</p>
+    </div>
+  </section>
+
+  <section id="cycle" data-heat-from="0.4" data-heat-to="0.5">
+    <div class="panel">
+      <p class="kicker reveal">The warm-up calendar</p>
+      <h2 class="reveal">Pick the pace.</h2>
+      <p class="reveal">You choose the length of the cycle. The lamp keeps to it.</p>
+      <div class="cycle reveal" role="group" aria-label="Warm-up cycle">
+        <button type="button" data-cycle="short" aria-pressed="false">Short</button>
+        <button type="button" data-cycle="medium" aria-pressed="true">Medium</button>
+        <button type="button" data-cycle="long" aria-pressed="false">Long</button>
+      </div>
+      <p id="cycle-text" class="reveal" aria-live="polite">Medium. The usual rhythm of a living room.</p>
+    </div>
+  </section>
+
+  <section id="tuning" data-heat-from="0.5" data-heat-to="0.6">
+    <div class="panel">
+      <p class="kicker reveal">Tuned by hand</p>
+      <h2 class="reveal">One batch at a time.</h2>
+      <p class="reveal">Each lamp is tuned by a person, not a line. Move the slider to change how thick the wax runs.</p>
+      <div class="control reveal">
+        <label for="viscosity"><span>Wax viscosity</span><output id="viscosity-out" for="viscosity">Medium</output></label>
+        <input id="viscosity" type="range" min="0" max="100" value="50" step="1">
+      </div>
+      <p class="small reveal">Thicker wax keeps the bubbles together. Thinner wax lets them part.</p>
+    </div>
+  </section>
+
+  <section id="subscribe" data-heat-from="0.6" data-heat-to="1">
+    <div class="panel">
+      <p class="kicker reveal">Monthly</p>
+      <h2 class="reveal">One lamp a month.</h2>
+      <ul class="plain reveal">
+        <li>Delivery to your door.</li>
+        <li>A part swapped when one wears out.</li>
+        <li>The warm-up cycle you chose, kept all month.</li>
+      </ul>
+      <div class="row reveal">
+        <button type="button" class="btn" id="subscribe-btn" aria-pressed="false">Start your cycle</button>
+        <p class="template-note">Template. Não é a marca Mirrel.</p>
+      </div>
+      <p class="status" id="subscribe-status" aria-live="polite"></p>
+      <p class="small reveal">Checkout happens on a separate screen. This page takes no payment.</p>
+    </div>
+  </section>
+
+  <section id="object" data-heat-from="1" data-heat-to="0.1">
+    <div class="panel">
+      <p class="kicker reveal">Mirrel</p>
+      <dl class="object reveal">
+        <dt>Item</dt>
+        <dd>Lava lamp, hand-tuned</dd>
+        <dt>Service</dt>
+        <dd>Monthly subscription</dd>
+        <dt>Cycles</dt>
+        <dd>Short, medium, long</dd>
+        <dt>Sessions</dt>
+        <dd>Forty minutes, no screen</dd>
+      </dl>
+      <p class="reveal">Leave it on.</p>
+    </div>
+  </section>
+</main>
+
+<footer class="foot">
+  <p class="template-note">Template. Não é a marca Mirrel.</p>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.15.1/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.15.1/ScrollTrigger.min.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  var root = document.documentElement;
+  function mq(q) { return !!(window.matchMedia && window.matchMedia(q).matches); }
+  var reduce = mq('(prefers-reduced-motion: reduce)');
+  var coarse = mq('(pointer: coarse)');
+  var isMobile = coarse || window.innerWidth < 768;
+  var canvas = document.getElementById('lava');
+
+  var VS = 'attribute vec2 aPos; void main() { gl_Position = vec4(aPos, 0.0, 1.0); }';
+  var FS = [
+    '#ifdef GL_FRAGMENT_PRECISION_HIGH',
+    'precision highp float;',
+    '#else',
+    'precision mediump float;',
+    '#endif',
+    'uniform vec2 uResolution;',
+    'uniform float uTime;',
+    'uniform float uPhase;',
+    'uniform float uHeat;',
+    'uniform float uThr;',
+    'uniform int uCount;',
+    'uniform vec2 uPointer;',
+    'uniform float uPull;',
+    'uniform vec3 uTint;',
+    'const vec3 BG = vec3(27.0, 15.0, 10.0) / 255.0;',
+    'const vec3 SURF = vec3(46.0, 26.0, 18.0) / 255.0;',
+    'const vec3 ACC = vec3(255.0, 106.0, 31.0) / 255.0;',
+    'const vec3 STAT = vec3(232.0, 185.0, 49.0) / 255.0;',
+    'float hash(float n) { return fract(sin(n) * 43758.5453); }',
+    'void main() {',
+    '  float aspect = uResolution.x / uResolution.y;',
+    '  vec2 uv = gl_FragCoord.xy / uResolution;',
+    '  vec2 p = vec2(uv.x * aspect, uv.y);',
+    '  vec3 col = mix(BG, SURF, uv.y * 0.6);',
+    '  col += uTint * pow(1.0 - uv.y, 3.0) * (0.06 + 0.22 * uHeat);',
+    '  float field = 0.0;',
+    '  for (int i = 0; i < 14; i++) {',
+    '    if (i >= uCount) break;',
+    '    float fi = float(i);',
+    '    float h1 = hash(fi * 1.13 + 0.7);',
+    '    float h2 = hash(fi * 7.31 + 2.1);',
+    '    float h3 = hash(fi * 3.77 + 5.3);',
+    '    float alive = clamp(uHeat * float(uCount) - fi, 0.0, 1.0);',
+    '    vec2 c0 = vec2(mix(0.2, aspect - 0.2, h1), mix(-0.05, 1.05, h2));',
+    '    float speedK = 0.6 + 0.8 * h3;',
+    '    if (i == 0) { c0 = vec2(aspect * 0.5, 0.5); speedK = 0.25; }',
+    '    float y = mod(c0.y + uPhase * speedK + 0.3, 1.6) - 0.3;',
+    '    float x = c0.x + sin(uTime * 0.4 + fi * 1.7) * 0.06 * aspect;',
+    '    vec2 c = vec2(x, y);',
+    '    vec2 dp = uPointer - c;',
+    '    c += dp * exp(-length(dp) * 5.0) * uPull * 0.25;',
+    '    float r = (0.08 + 0.06 * h2) * (0.8 + 0.4 * uHeat) * alive;',
+    '    vec2 d = p - c;',
+    '    field += r * r / (dot(d, d) + 0.0005);',
+    '  }',
+    '  float m = smoothstep(uThr - 0.05, uThr + 0.05, field);',
+    '  float halo = smoothstep(uThr * 0.4, uThr, field) * (1.0 - m);',
+    '  vec3 wax = mix(ACC, STAT, clamp((field - uThr) * 0.4, 0.0, 1.0));',
+    '  col = mix(col, SURF * 1.3, halo * 0.6);',
+    '  col = mix(col, wax, m);',
+    '  col += (hash(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) - 0.5) / 255.0;',
+    '  gl_FragColor = vec4(col, 1.0);',
+    '}'
+  ].join('\n');
+
+  // Cycle presets: bubble speed and the warm tint at the bottom of the field.
+  var CYCLES = {
+    short:  { speed: 1.8,  tint: [255, 106, 31], text: 'Short. A quick warm-up and a faster rise.' },
+    medium: { speed: 1.0,  tint: [232, 185, 49], text: 'Medium. The usual rhythm of a living room.' },
+    long:   { speed: 0.45, tint: [141, 61, 21],  text: 'Long. Slow as wax, one lamp for the season.' }
+  };
+
+  var tgt = { speed: 1.0, tint: [232, 185, 49], thr: 0.925 };
+  var cur = { speed: 1.0, tint: [232, 185, 49], thr: 0.925, heat: 0.1, pull: 0, phase: 0 };
+  var heatTarget = 0.1;
+  var pointer = [0.5, 0.5];
+  var time = 0, t0 = 0, last = 0, raf = 0;
+  var winStart = 0, winSum = 0, winN = 0;
+  var quality = 0, count = 12, scale = 1;
+  var gl = null, prog = null, U = {};
+
+  // Cycle buttons: change speed and tint; no motion of their own.
+  var cycleBtns = document.querySelectorAll('[data-cycle]');
+  var cycleText = document.getElementById('cycle-text');
+  Array.prototype.forEach.call(cycleBtns, function (b) {
+    b.addEventListener('click', function () {
+      var c = CYCLES[b.getAttribute('data-cycle')];
+      Array.prototype.forEach.call(cycleBtns, function (o) {
+        o.setAttribute('aria-pressed', o === b ? 'true' : 'false');
+      });
+      tgt.speed = c.speed;
+      tgt.tint = c.tint.slice();
+      cycleText.textContent = c.text;
+      if (reduce) { ease(true); draw(); }
+    });
+  });
+
+  // Viscosity slider: higher viscosity lowers the threshold, so blobs merge and fatten.
+  var slider = document.getElementById('viscosity');
+  var sliderOut = document.getElementById('viscosity-out');
+  slider.addEventListener('input', function () {
+    var v = +slider.value;
+    sliderOut.textContent = v < 34 ? 'Thin' : (v < 67 ? 'Medium' : 'Thick');
+    tgt.thr = 1.3 - (v / 100) * 0.75;
+    if (reduce) { ease(true); draw(); }
+  });
+
+  // Subscribe button: visual state only. No payment, no navigation.
+  var subBtn = document.getElementById('subscribe-btn');
+  var subStatus = document.getElementById('subscribe-status');
+  subBtn.addEventListener('click', function () {
+    subBtn.classList.add('is-warming');
+    subBtn.setAttribute('aria-pressed', 'true');
+    subBtn.textContent = 'Warming up';
+    subStatus.textContent = 'Warming up. Nothing is charged on this page.';
+  });
+
+  // WebGL setup. Without it the CSS backdrop and the text stay, and GSAP does not run.
+  try {
+    gl = canvas.getContext('webgl', { alpha: false, antialias: false, powerPreference: 'low-power' }) ||
+         canvas.getContext('experimental-webgl');
+  } catch (e) { gl = null; }
+  if (gl) prog = buildProgram();
+  if (!prog) {
+    root.classList.add('no-webgl');
+    return;
+  }
+
+  function buildProgram() {
+    function sh(type, src) {
+      var s = gl.createShader(type);
+      gl.shaderSource(s, src);
+      gl.compileShader(s);
+      return gl.getShaderParameter(s, gl.COMPILE_STATUS) ? s : null;
+    }
+    var vs = sh(gl.VERTEX_SHADER, VS);
+    var fs = sh(gl.FRAGMENT_SHADER, FS);
+    if (!vs || !fs) return null;
+    var p = gl.createProgram();
+    gl.attachShader(p, vs);
+    gl.attachShader(p, fs);
+    gl.bindAttribLocation(p, 0, 'aPos');
+    gl.linkProgram(p);
+    return gl.getProgramParameter(p, gl.LINK_STATUS) ? p : null;
+  }
+
+  gl.useProgram(prog);
+  var buf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+  gl.enableVertexAttribArray(0);
+  gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+  ['uResolution', 'uTime', 'uPhase', 'uHeat', 'uThr', 'uCount', 'uPointer', 'uPull', 'uTint'].forEach(function (n) {
+    U[n] = gl.getUniformLocation(prog, n);
+  });
+
+  function draw() {
+    gl.viewport(0, 0, canvas.width, canvas.height);
+    gl.uniform2f(U.uResolution, canvas.width, canvas.height);
+    gl.uniform1f(U.uTime, time);
+    gl.uniform1f(U.uPhase, cur.phase);
+    gl.uniform1f(U.uHeat, cur.heat);
+    gl.uniform1f(U.uThr, cur.thr);
+    gl.uniform1i(U.uCount, count);
+    gl.uniform2f(U.uPointer, pointer[0], pointer[1]);
+    gl.uniform1f(U.uPull, cur.pull);
+    gl.uniform3f(U.uTint, cur.tint[0] / 255, cur.tint[1] / 255, cur.tint[2] / 255);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+  }
+
+  function ease(snap) {
+    var kh = snap ? 1 : 0.06, ks = snap ? 1 : 0.05, kt = snap ? 1 : 0.08;
+    cur.heat += (heatTarget - cur.heat) * kh;
+    cur.speed += (tgt.speed - cur.speed) * ks;
+    cur.thr += (tgt.thr - cur.thr) * kt;
+    for (var i = 0; i < 3; i++) cur.tint[i] += (tgt.tint[i] - cur.tint[i]) * ks;
+    cur.pull = snap ? 0 : cur.pull * 0.94;
+    if (cur.pull < 0.001) cur.pull = 0;
+  }
+
+  // Quality: 0.5 scale and 8 bubbles on phones, 12 on desktop. Drops to 0.35 and 6 if the
+  // average frame stays above 33 ms for five seconds.
+  function applyQuality(q) {
+    quality = q;
+    count = q === 0 ? (isMobile ? 8 : 12) : 6;
+    scale = q === 0 ? (isMobile ? 0.5 : Math.min(window.devicePixelRatio || 1, 1.5)) : 0.35;
+    sizeCanvas();
+  }
+  function sizeCanvas() {
+    canvas.width = Math.max(1, Math.round(window.innerWidth * scale));
+    canvas.height = Math.max(1, Math.round(window.innerHeight * scale));
+    if (reduce) draw();
+  }
+  window.addEventListener('resize', sizeCanvas);
+
+  window.addEventListener('pointermove', function (e) {
+    if (reduce || coarse) return;
+    var aspect = window.innerWidth / window.innerHeight;
+    pointer[0] = e.clientX / window.innerWidth * aspect;
+    pointer[1] = 1 - e.clientY / window.innerHeight;
+    cur.pull = 1;
+  }, { passive: true });
+
+  function frame(now) {
+    raf = requestAnimationFrame(frame);
+    var dt = last ? now - last : 16;
+    last = now;
+    if (dt < 500) { winSum += dt; winN += 1; }
+    if (now - winStart >= 5000) {
+      if (quality === 0 && winN && winSum / winN > 33) applyQuality(1);
+      winStart = now; winSum = 0; winN = 0;
+    }
+    time = (now - t0) / 1000;
+    cur.phase += Math.min(dt, 100) / 1000 * cur.speed * (0.02 + 0.05 * cur.heat);
+    ease(false);
+    draw();
+  }
+
+  // Heat: GSAP ScrollTrigger maps the scroll position to uHeat, section by section.
+  var hasGsap = !!(window.gsap && window.ScrollTrigger);
+  if (reduce) {
+    heatTarget = 0.4;
+    cur.heat = 0.4;
+  } else if (hasGsap) {
+    gsap.registerPlugin(ScrollTrigger);
+    var sections = Array.prototype.slice.call(document.querySelectorAll('[data-heat-from]'));
+    var ranges = [];
+    var measure = function () {
+      ranges = sections.map(function (s) {
+        var r = s.getBoundingClientRect();
+        var top = r.top + window.scrollY;
+        return { top: top, bottom: top + r.height,
+                 a: parseFloat(s.getAttribute('data-heat-from')),
+                 b: parseFloat(s.getAttribute('data-heat-to')) };
+      });
+    };
+    var track = function () {
+      if (!ranges.length) return;
+      var y = window.scrollY + window.innerHeight * 0.5, i, r;
+      for (i = 0; i < ranges.length; i++) {
+        r = ranges[i];
+        if (y >= r.top && y < r.bottom) {
+          heatTarget = r.a + (r.b - r.a) * ((y - r.top) / (r.bottom - r.top));
+          return;
+        }
+      }
+      heatTarget = y < ranges[0].top ? ranges[0].a : ranges[ranges.length - 1].b;
+    };
+    ScrollTrigger.create({
+      start: 0,
+      end: 'max',
+      onUpdate: track,
+      onRefresh: function () { measure(); track(); }
+    });
+    measure();
+    track();
+
+    // Lines reveal once as they enter. Text is visible by default if GSAP is missing.
+    Array.prototype.forEach.call(document.querySelectorAll('.reveal'), function (el) {
+      gsap.from(el, {
+        opacity: 0, y: 14, duration: 0.9, ease: 'power2.out',
+        scrollTrigger: { trigger: el, start: 'top 90%', once: true }
+      });
+    });
+  } else {
+    heatTarget = 0.4;
+  }
+
+  canvas.classList.add('is-live');
+  canvas.addEventListener('webglcontextlost', function (e) {
+    e.preventDefault();
+    cancelAnimationFrame(raf);
+    canvas.classList.remove('is-live');
+    root.classList.add('no-webgl');
+  }, false);
+
+  applyQuality(0);
+  if (reduce) {
+    // Reduced motion: one frame at uHeat 0.4, redrawn only on user input.
+    draw();
+  } else {
+    t0 = winStart = performance.now();
+    raf = requestAnimationFrame(frame);
+  }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,717 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Dead Quarter Parlor — Arcade Idle</title>
+<meta name="description" content="We charge you a quarter to watch nothing happen. Ninety seconds of a ship that holds still.">
+<script>document.documentElement.classList.add('js');</script>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root {
+  --bg: #0B0F0C;
+  --surface: #16201A;
+  --text: #C9F5C0;
+  --accent: #FFB347;
+  --status: #FF4D4D;
+  --dim: #3E5E45;
+  --frame: #2A3A2E;
+  --crt: #050805;
+  --glow: 0;
+  --display: "Press Start 2P", monospace;
+  --mono: "IBM Plex Mono", ui-monospace, monospace;
+  --max: 1080px;
+}
+
+* { box-sizing: border-box; }
+
+html { background: var(--bg); color: var(--text); -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 400 16px/1.6 var(--mono);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  overflow-x: hidden;
+  min-height: 100vh;
+}
+
+/* CRT texture and phosphor glow; the glow lights up on the first scroll */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 50;
+  background: repeating-linear-gradient(to bottom, rgba(0,0,0,.18) 0 1px, transparent 1px 3px);
+}
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 49;
+  background: radial-gradient(ellipse at 50% 30%, rgba(201,245,192,.10), transparent 60%);
+  opacity: var(--glow);
+}
+
+.wrap { max-width: var(--max); margin: 0 auto; }
+
+canvas, .fallback { image-rendering: pixelated; }
+
+section { padding: 72px 0; border-top: 1px solid var(--frame); }
+section.hero { border-top: 0; padding: 40px 0 56px; }
+
+h1, h2, h3 { margin: 0; font-weight: 400; }
+
+h1 {
+  font-family: var(--display);
+  font-size: clamp(18px, 6vw, 48px);
+  line-height: 1.35;
+  margin-bottom: 20px;
+  overflow-wrap: anywhere;
+  color: var(--text);
+}
+
+h2 {
+  font-family: var(--display);
+  font-size: clamp(13px, 2.4vw, 20px);
+  line-height: 1.7;
+  margin-bottom: 20px;
+  color: var(--text);
+}
+
+h3 {
+  font: 500 15px/1.4 var(--mono);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  margin-bottom: 8px;
+}
+
+p { margin: 0 0 16px; max-width: 60ch; }
+
+.lead { font-size: clamp(18px, 2.4vw, 24px); line-height: 1.45; color: var(--text); }
+
+.kicker {
+  font: 500 12px/1.4 var(--mono);
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 12px;
+}
+
+/* Hero */
+.hero-grid { display: grid; gap: 32px; align-items: center; }
+@media (min-width: 880px) { .hero-grid { grid-template-columns: 1fr 1fr; } }
+
+.bezel {
+  background: var(--surface);
+  border: 4px solid var(--frame);
+  border-radius: 12px;
+  padding: 12px;
+  box-shadow: inset 0 0 0 2px var(--bg), 0 0 0 2px var(--frame);
+  width: 100%;
+}
+.hero-bezel { max-width: 380px; margin: 0 auto; }
+.cabinet-bezel { max-width: 640px; margin: 0 auto; }
+
+.screen {
+  position: relative;
+  background: var(--crt);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: inset 0 0 40px rgba(201,245,192,.08);
+}
+.screen::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(to bottom, rgba(0,0,0,.35) 0 1px, transparent 1px 2px);
+}
+.screen canvas { display: block; margin: 0 auto; }
+
+.fallback {
+  display: none;
+  width: min(100%, 240px);
+  height: auto;
+  margin: 24px auto;
+  color: var(--text);
+}
+html:not(.js) .fallback { display: block; }
+html:not(.js) canvas { display: none; }
+
+.caption {
+  font: 400 12px/1.5 var(--mono);
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  margin: 12px 0 0;
+  opacity: .8;
+}
+
+.btn-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 48px;
+  margin-top: 20px;
+  padding: 14px 18px;
+  background: var(--accent);
+  color: var(--bg);
+  text-decoration: none;
+  font: 400 12px/1.3 var(--display);
+}
+
+/* Sections */
+.sell p[data-sell] {
+  font-size: clamp(18px, 2.4vw, 24px);
+  line-height: 1.5;
+  max-width: 30ch;
+  margin-bottom: 28px;
+}
+
+.steps {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 24px;
+}
+@media (min-width: 880px) { .steps { grid-template-columns: repeat(3, 1fr); } }
+.steps li { border-left: 4px solid var(--frame); padding-left: 16px; }
+.led {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  margin-bottom: 14px;
+  background: var(--dim);
+}
+.steps li.is-lit .led {
+  background: var(--accent);
+  box-shadow: 0 0 12px var(--accent);
+}
+
+.cabinet-copy { margin-bottom: 32px; }
+
+/* Insert coin */
+.coin-panel {
+  position: relative;
+  max-width: 520px;
+  margin: 0 auto;
+  background: var(--surface);
+  border: 4px solid var(--frame);
+  border-radius: 12px;
+  padding: 44px 20px 28px;
+  text-align: center;
+}
+.slot {
+  position: relative;
+  width: 120px;
+  height: 12px;
+  margin: 0 auto;
+  background: var(--crt);
+  border-radius: 2px;
+}
+.coin {
+  position: absolute;
+  left: 50%;
+  top: -6px;
+  width: 28px;
+  height: 28px;
+  margin-left: -14px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: inset 0 0 0 4px var(--bg);
+  opacity: 0;
+}
+.counter {
+  font: 400 clamp(24px, 7vw, 40px)/1 var(--display);
+  color: var(--text);
+  margin: 28px 0 24px;
+}
+.counter.is-urgent { color: var(--status); }
+
+.coin-btn {
+  display: block;
+  width: 100%;
+  max-width: 320px;
+  min-height: 56px;
+  margin: 0 auto;
+  padding: 18px 24px;
+  border: 0;
+  border-radius: 0;
+  background: var(--accent);
+  color: var(--bg);
+  font: 400 14px/1.2 var(--display);
+  cursor: pointer;
+  box-shadow: 0 6px 0 var(--dim);
+}
+.coin-btn:active:not(:disabled) { transform: translateY(4px); box-shadow: 0 2px 0 var(--dim); }
+.coin-btn:disabled { opacity: .5; cursor: default; }
+.coin-btn:focus-visible,
+.btn-link:focus-visible { outline: 3px solid var(--text); outline-offset: 4px; }
+
+.status { font-size: 14px; margin: 20px auto 0; }
+
+/* Receipt */
+.slot-out { overflow: hidden; max-width: 360px; margin: 0 auto; }
+.receipt {
+  background: var(--text);
+  color: var(--bg);
+  padding: 22px 20px;
+  font: 500 14px/1.7 var(--mono);
+  box-shadow: 0 6px 0 var(--frame);
+}
+.receipt .r-title { font: 400 11px/1.5 var(--display); margin-bottom: 14px; }
+.r-row { display: flex; justify-content: space-between; gap: 12px; }
+.r-rule { border-top: 1px dashed var(--bg); margin: 10px 0; }
+
+/* Footer */
+footer.foot {
+  border-top: 1px solid var(--frame);
+  padding: 40px 0 56px;
+  font-size: 14px;
+}
+.template-note {
+  font: 400 12px/1.5 var(--mono);
+  color: var(--text);
+  opacity: .6;
+  margin-top: 24px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <section class="hero" id="hero">
+    <div class="hero-grid">
+      <div>
+        <h1>DEAD QUARTER PARLOR</h1>
+        <p class="lead">One quarter. Ninety seconds. Nothing to play.</p>
+        <p>Insert coin to watch the ship wait for you.</p>
+        <a class="btn-link" href="#insert">Insert coin</a>
+      </div>
+      <div>
+        <div class="bezel hero-bezel">
+          <div class="screen">
+            <canvas data-sprite data-px="3" width="120" height="90" aria-label="A ship at rest on a dark green screen"></canvas>
+            <svg class="fallback" viewBox="0 0 16 11" shape-rendering="crispEdges" role="img" aria-label="A ship at rest on a dark green screen">
+              <g fill="currentColor">
+                <rect x="7" y="1" width="2" height="1"/>
+                <rect x="6" y="2" width="1" height="2"/>
+                <rect x="9" y="2" width="1" height="2"/>
+                <rect x="4" y="4" width="8" height="1"/>
+                <rect x="3" y="5" width="10" height="1"/>
+                <rect x="0" y="6" width="16" height="1"/>
+                <rect x="0" y="7" width="16" height="1"/>
+                <rect x="0" y="8" width="1" height="1"/>
+                <rect x="2" y="8" width="12" height="1"/>
+                <rect x="15" y="8" width="1" height="1"/>
+                <rect x="0" y="9" width="1" height="1"/>
+                <rect x="4" y="9" width="2" height="1"/>
+                <rect x="10" y="9" width="2" height="1"/>
+                <rect x="15" y="9" width="1" height="1"/>
+              </g>
+              <rect x="7" y="2" width="2" height="2" style="fill:var(--accent)"/>
+            </svg>
+          </div>
+        </div>
+        <p class="caption">Cabinet 01 — standby</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="sell">
+    <p class="kicker">01 — What we sell</p>
+    <h2>We charge you a quarter to watch nothing happen.</h2>
+    <div class="sell">
+      <p data-sell>We rent out a cabinet that never plays a game.</p>
+      <p data-sell>One coin buys ninety seconds of a ship that holds still.</p>
+      <p data-sell>You leave with a receipt for the time you did not spend playing.</p>
+    </div>
+  </section>
+
+  <section id="how">
+    <p class="kicker">02 — How it works</p>
+    <h2>Three steps. None of them is play.</h2>
+    <ol class="steps">
+      <li data-step>
+        <span class="led" aria-hidden="true"></span>
+        <h3>Insert coin</h3>
+        <p>Press the button and the coin drops into the slot.</p>
+      </li>
+      <li data-step>
+        <span class="led" aria-hidden="true"></span>
+        <h3>Wait</h3>
+        <p>The ship sits in the middle of the screen for ninety seconds. Nothing happens.</p>
+      </li>
+      <li data-step>
+        <span class="led" aria-hidden="true"></span>
+        <h3>Take the receipt</h3>
+        <p>When the clock runs out, the printer ejects a slip with the time you spent not playing.</p>
+      </li>
+    </ol>
+  </section>
+
+  <section id="cabinet">
+    <p class="kicker">03 — The cabinet</p>
+    <h2>A green tube, a plywood frame, one ship.</h2>
+    <p class="cabinet-copy">The screen is a phosphor tube behind an acrylic panel. The only sprite on it is a ship with its engines off. Move your pointer over the screen and its cockpit light blinks. The ship does not move.</p>
+    <div class="bezel cabinet-bezel">
+      <div class="screen">
+        <canvas data-sprite data-px="4" data-timer width="120" height="90" aria-label="The ship on the cabinet screen, with the session clock below it"></canvas>
+        <svg class="fallback" viewBox="0 0 16 11" shape-rendering="crispEdges" role="img" aria-label="The ship on the cabinet screen">
+          <g fill="currentColor">
+            <rect x="7" y="1" width="2" height="1"/>
+            <rect x="6" y="2" width="1" height="2"/>
+            <rect x="9" y="2" width="1" height="2"/>
+            <rect x="4" y="4" width="8" height="1"/>
+            <rect x="3" y="5" width="10" height="1"/>
+            <rect x="0" y="6" width="16" height="1"/>
+            <rect x="0" y="7" width="16" height="1"/>
+            <rect x="0" y="8" width="1" height="1"/>
+            <rect x="2" y="8" width="12" height="1"/>
+            <rect x="15" y="8" width="1" height="1"/>
+            <rect x="0" y="9" width="1" height="1"/>
+            <rect x="4" y="9" width="2" height="1"/>
+            <rect x="10" y="9" width="2" height="1"/>
+            <rect x="15" y="9" width="1" height="1"/>
+          </g>
+          <rect x="7" y="2" width="2" height="2" style="fill:var(--accent)"/>
+        </svg>
+      </div>
+    </div>
+  </section>
+
+  <section id="insert">
+    <p class="kicker">04 — Insert coin</p>
+    <h2>Insert coin</h2>
+    <p>Pressing the button starts the ninety-second count on the cabinet screen. The ship stays where it is for the whole session.</p>
+    <div class="coin-panel">
+      <div class="slot"><span class="coin" id="coin" aria-hidden="true"></span></div>
+      <div class="counter" id="counter" aria-live="off">01:30</div>
+      <button type="button" class="coin-btn" id="coin-btn">Insert coin</button>
+      <p class="status" id="status">Ninety seconds on the clock. The ship does not move.</p>
+    </div>
+  </section>
+
+  <section id="receipt-sec">
+    <p class="kicker">05 — Receipt</p>
+    <h2>Your receipt</h2>
+    <p>Printed on thermal paper when the count ends. It lists the time you spent not playing. There is no score.</p>
+    <div class="slot-out">
+      <div class="receipt" id="receipt">
+        <p class="r-title">TIME WITHOUT GAMEPLAY</p>
+        <div class="r-row"><span>DATE</span><span id="r-date">--</span></div>
+        <div class="r-row"><span>CABINET</span><span>CAB-01</span></div>
+        <div class="r-row"><span>TIME IN</span><span id="r-in">--:--:--</span></div>
+        <div class="r-row"><span>TIME OUT</span><span id="r-out">--:--:--</span></div>
+        <div class="r-row"><span>COINS</span><span id="r-coins">-</span></div>
+        <div class="r-rule"></div>
+        <div class="r-row"><span>GAMEPLAY</span><span id="r-game">--:--:--</span></div>
+        <div class="r-row"><span>NO GAME TIME</span><span id="r-nogame">--:--:--</span></div>
+        <div class="r-rule"></div>
+        <p class="r-title" style="margin:0">THANK YOU FOR NOT PLAYING</p>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer class="foot">
+  <div class="wrap">
+    <p>Unit 3, 2214 Mercer Alley. Open Thursday to Sunday, 4 pm to 11 pm.</p>
+    <p>Terms: one quarter buys one session of ninety seconds. Sessions cannot be paused, transferred or played. No refunds for time spent playing, because none was.</p>
+    <p class="template-note">Template page. Replace copy, address and receipt before publishing.</p>
+  </div>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.15.1/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.15.1/ScrollTrigger.min.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  var root = document.documentElement;
+  var reduce = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  var hasGsap = !!(window.gsap && window.ScrollTrigger);
+  var SESSION = 90;
+  var TICK = 1000 / 12;
+
+  var styles = getComputedStyle(root);
+  var COL = {
+    body: styles.getPropertyValue('--text').trim(),
+    dim: styles.getPropertyValue('--dim').trim(),
+    acc: styles.getPropertyValue('--accent').trim()
+  };
+
+  // 16 x 11 ship. b = hull, c = cockpit light (drawn lit during a blink).
+  var BASE = [
+    '................',
+    '.......bb.......',
+    '......bccb......',
+    '......bccb......',
+    '....bbbbbbbb....',
+    '...bbbbbbbbbb...',
+    'bbbbbbbbbbbbbbbb',
+    'bbbbbbbbbbbbbbbb',
+    'b.bbbbbbbbbbbb.b',
+    'b...bb....bb...b',
+    '................'
+  ];
+
+  var state = { scroll: 0, hover: false, counting: false, done: false, startAt: 0, startWall: null };
+
+  var counterEl = document.getElementById('counter');
+  var btn = document.getElementById('coin-btn');
+  var statusEl = document.getElementById('status');
+  var receiptEl = document.getElementById('receipt');
+
+  // Canvas setup. If 2D is unavailable, drop the js class so the static fallback shows.
+  var sprites = [];
+  var list = document.querySelectorAll('canvas[data-sprite]');
+  for (var i = 0; i < list.length; i++) {
+    var c = list[i];
+    var ctx = c.getContext ? c.getContext('2d') : null;
+    if (!ctx) { sprites = []; break; }
+    ctx.imageSmoothingEnabled = false;
+    sprites.push({ el: c, ctx: ctx, px: +c.getAttribute('data-px') || 3, timer: c.hasAttribute('data-timer') });
+  }
+  if (!sprites.length) root.classList.remove('js');
+
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+
+  function fmt(sec) {
+    var s = Math.ceil(sec);
+    return pad(Math.floor(s / 60)) + ':' + pad(s % 60);
+  }
+
+  function hms(d) {
+    return pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+  }
+
+  function ymd(d) {
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  }
+
+  function remain() {
+    if (state.counting) return Math.max(0, SESSION - (performance.now() - state.startAt) / 1000);
+    return state.done ? 0 : SESSION;
+  }
+
+  function label() {
+    if (!state.counting && !state.done) return 'INSERT COIN';
+    return fmt(remain());
+  }
+
+  function paint(s, exLen, lit, text) {
+    var g = s.ctx, W = s.el.width, H = s.el.height, p = s.px;
+    var ox = Math.floor((W - BASE[0].length * p) / 2);
+    var oy = Math.floor((H - BASE.length * p) / 2) - (s.timer ? 8 : 0);
+    g.clearRect(0, 0, W, H);
+    for (var y = 0; y < BASE.length; y++) {
+      var row = BASE[y];
+      for (var x = 0; x < row.length; x++) {
+        var ch = row.charAt(x);
+        if (ch === '.') continue;
+        g.fillStyle = ch === 'c' ? (lit ? COL.acc : COL.dim) : COL.body;
+        g.fillRect(ox + x * p, oy + y * p, p, p);
+      }
+    }
+    if (exLen > 0) {
+      var ex = [[7, 10], [8, 10]];
+      if (exLen > 1) ex = ex.concat([[6, 10], [9, 10]]);
+      if (exLen > 2) ex = ex.concat([[7, 11], [8, 11]]);
+      g.fillStyle = COL.acc;
+      for (var k = 0; k < ex.length; k++) g.fillRect(ox + ex[k][0] * p, oy + ex[k][1] * p, p, p);
+    }
+    if (s.timer && text) {
+      g.fillStyle = COL.body;
+      g.font = '8px "Press Start 2P", monospace';
+      g.textAlign = 'center';
+      g.textBaseline = 'alphabetic';
+      g.fillText(text, W / 2, H - 6);
+    }
+  }
+
+  function renderStatic() {
+    for (var i = 0; i < sprites.length; i++) paint(sprites[i], 0, false, sprites[i].timer ? label() : '');
+  }
+
+  // Fixed 1/12 s sprite step, decoupled from the render rate.
+  var last = 0, tick = 0;
+  function loop(now) {
+    if (!last) last = now;
+    var steps = Math.floor((now - last) / TICK);
+    if (steps > 0) { tick += steps; last += steps * TICK; }
+
+    var exLen, lit;
+    if (state.counting) { exLen = 0; lit = false; }
+    else if (state.hover) { exLen = tick % 4; lit = tick % 2 === 0; }
+    else { exLen = state.scroll; lit = tick % 24 === 0; } // one blink every 2 s
+
+    var text = label();
+    for (var i = 0; i < sprites.length; i++) paint(sprites[i], exLen, lit, sprites[i].timer ? text : '');
+    requestAnimationFrame(loop);
+  }
+
+  function fit() {
+    for (var i = 0; i < sprites.length; i++) {
+      var el = sprites[i].el;
+      var w = el.parentNode.clientWidth;
+      var k = Math.max(1, Math.min(4, Math.floor(w / el.width)));
+      el.style.width = (el.width * k) + 'px';
+      el.style.height = (el.height * k) + 'px';
+    }
+  }
+
+  var rt = 0;
+  window.addEventListener('resize', function () {
+    clearTimeout(rt);
+    rt = setTimeout(function () { fit(); if (reduce) renderStatic(); }, 120);
+  });
+
+  for (var j = 0; j < sprites.length; j++) {
+    sprites[j].el.addEventListener('pointerenter', function () { state.hover = true; });
+    sprites[j].el.addEventListener('pointerleave', function () { state.hover = false; });
+  }
+
+  function setText(id, value) {
+    var el = document.getElementById(id);
+    if (el) el.textContent = value;
+  }
+
+  function fillReceipt() {
+    var t0 = state.startWall || new Date();
+    var t1 = new Date(t0.getTime() + SESSION * 1000);
+    setText('r-date', ymd(t0));
+    setText('r-in', hms(t0));
+    setText('r-out', hms(t1));
+    setText('r-coins', '1');
+    setText('r-game', '00:00:00');
+    setText('r-nogame', '00:01:30');
+  }
+
+  function dropCoin() {
+    var coin = document.getElementById('coin');
+    if (!coin || !hasGsap) return;
+    gsap.fromTo(coin, { y: -44, opacity: 1 }, {
+      y: 0, duration: 0.6, ease: 'steps(6)',
+      onComplete: function () { gsap.to(coin, { opacity: 0, duration: 0.2 }); }
+    });
+  }
+
+  function refreshCounter() {
+    if (!state.counting) return;
+    var r = remain();
+    counterEl.textContent = fmt(r);
+    counterEl.classList.toggle('is-urgent', r < 10);
+    if (r <= 0) finish();
+  }
+
+  function finish() {
+    state.counting = false;
+    state.done = true;
+    counterEl.textContent = '00:00';
+    counterEl.classList.remove('is-urgent');
+    fillReceipt();
+    if (hasGsap && !reduce) {
+      gsap.fromTo(receiptEl, { yPercent: -105 }, { yPercent: 0, duration: 0.6, ease: 'steps(6)' });
+    }
+    btn.disabled = false;
+    btn.textContent = 'Insert coin again';
+    statusEl.textContent = 'Receipt printed. Thank you for not playing.';
+    if (reduce) renderStatic();
+  }
+
+  function startSession() {
+    if (state.counting) return;
+    state.counting = true;
+    state.done = false;
+    state.startWall = new Date();
+    state.startAt = performance.now();
+    btn.disabled = true;
+    btn.textContent = 'Counting down';
+    statusEl.textContent = 'Ninety seconds on the clock. The ship does not move.';
+    counterEl.textContent = fmt(SESSION);
+    counterEl.classList.remove('is-urgent');
+    if (hasGsap && !reduce) {
+      gsap.set(receiptEl, { yPercent: -105 });
+      dropCoin();
+    }
+    if (reduce) { finish(); return; }
+    refreshCounter();
+  }
+
+  btn.addEventListener('click', startSession);
+  setInterval(refreshCounter, 250);
+
+  function initMotion() {
+    gsap.registerPlugin(ScrollTrigger);
+
+    var glow = { v: 0 };
+    ScrollTrigger.create({
+      trigger: '#hero', start: 'top -30px', once: true,
+      onEnter: function () {
+        gsap.to(glow, {
+          v: 1, duration: 0.8,
+          onUpdate: function () { root.style.setProperty('--glow', glow.v.toFixed(3)); }
+        });
+      }
+    });
+
+    var blocks = document.querySelectorAll('[data-sell]');
+    for (var b = 0; b < blocks.length; b++) {
+      (function (el, idx) {
+        gsap.from(el, {
+          opacity: 0, duration: 0.3,
+          scrollTrigger: {
+            trigger: el, start: 'top 85%', once: true,
+            onEnter: function () { state.scroll = (idx + 1) % 4; }
+          }
+        });
+      })(blocks[b], b);
+    }
+
+    var steps = document.querySelectorAll('[data-step]');
+    for (var s = 0; s < steps.length; s++) {
+      (function (el) {
+        ScrollTrigger.create({
+          trigger: el, start: 'top 75%', once: true,
+          onEnter: function () { el.classList.add('is-lit'); }
+        });
+      })(steps[s]);
+    }
+  }
+
+  // Reduced motion, or no GSAP: content and LEDs show in their final state, no scroll effects.
+  var steps = document.querySelectorAll('[data-step]');
+  if (reduce || !hasGsap) {
+    for (var t = 0; t < steps.length; t++) steps[t].classList.add('is-lit');
+  }
+
+  fit();
+  if (reduce) {
+    renderStatic();
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(renderStatic);
+  } else {
+    if (sprites.length) requestAnimationFrame(loop);
+    if (hasGsap) initMotion();
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(renderStatic);
+  }
+
+  if (hasGsap && !reduce) gsap.set(receiptEl, { yPercent: -105 });
+})();
+</script>
+</body>
+</html>

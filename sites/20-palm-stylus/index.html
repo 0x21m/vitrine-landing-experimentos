@@ -1,0 +1,700 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Fallowline — Pocket agenda, 1997</title>
+<meta name="description" content="A pocket agenda with a stylus that reads your scribbles and strikes them out for you.">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=VT323&display=swap" rel="stylesheet">
+<style>
+:root{
+  --lcd:#B9C2A7;
+  --paper:#E4E8D6;
+  --ink:#1E2A1F;
+  --red:#D6362B;
+  --ok:#3E7A4A;
+  --ink-soft:rgba(30,42,31,.6);
+  --ink-line:rgba(30,42,31,.18);
+  --display:"VT323","Courier New",monospace;
+  --text:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  --pen:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath d='M3 21 L5 15 L16 4 L20 8 L9 19 Z' fill='%23D6362B' stroke='%231E2A1F' stroke-width='1.2'/%3E%3C/svg%3E") 3 21, crosshair;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{background:var(--lcd);-webkit-text-size-adjust:100%}
+body{
+  margin:0;min-width:0;overflow-x:hidden;
+  background-color:var(--lcd);color:var(--ink);
+  background-image:linear-gradient(rgba(30,42,31,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(30,42,31,.045) 1px,transparent 1px);
+  background-size:14px 14px;
+  font:400 16px/1.6 var(--text);
+  padding-left:max(16px, env(safe-area-inset-left, 0px));
+  padding-right:max(16px, env(safe-area-inset-right, 0px));
+}
+[hidden]{display:none!important}
+h1,h2,h3{font-family:var(--display);font-weight:400;line-height:.95;margin:0;overflow-wrap:break-word}
+p{margin:0}
+a{color:var(--ink)}
+a:focus-visible,button:focus-visible{outline:2px dashed var(--red);outline-offset:3px}
+.wrap{max-width:1180px;margin:0 auto;min-width:0}
+
+/* header */
+.top{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px 24px;padding:18px 0;border-bottom:1px solid var(--ink-line)}
+.mark{font:400 34px/1 var(--display);color:var(--ink);text-decoration:none;letter-spacing:.5px}
+.top nav{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:13px;text-transform:uppercase;letter-spacing:.08em}
+.top nav a{text-decoration:none}
+
+/* buttons */
+.btn{display:inline-block;padding:12px 18px;border:2px solid var(--ink);background:var(--ink);color:var(--paper);font:500 14px/1.2 var(--text);text-transform:uppercase;letter-spacing:.08em;text-decoration:none;box-shadow:4px 4px 0 var(--red)}
+.btn.ghost{background:var(--paper);color:var(--ink);box-shadow:4px 4px 0 var(--ink)}
+.btn:hover{transform:translate(-1px,-1px)}
+
+/* hero */
+.hero{display:grid;gap:44px;align-items:center;padding:56px 0 72px;grid-template-columns:minmax(0,1fr)}
+@media (min-width:900px){.hero{grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);padding:80px 0 96px}}
+.eyebrow{font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:18px}
+h1{font-size:clamp(50px,10vw,104px);letter-spacing:-.5px}
+.sub{font-size:18px;max-width:34ch;margin-top:24px}
+.call{font:400 30px/1.1 var(--display);margin:12px 0 30px}
+.actions{display:flex;flex-wrap:wrap;gap:14px}
+
+/* device */
+.device-stage{perspective:1000px;width:100%;max-width:380px;justify-self:center;min-width:0}
+.device-scroll{will-change:transform}
+.device-tilt{transform-style:preserve-3d;transition:transform .35s ease-out}
+.device{position:relative;padding:14px 14px 12px;background:linear-gradient(180deg,#d3d9c4 0%,#b3bba4 100%);border:2px solid #6f7863;border-radius:16px;box-shadow:inset 0 2px 0 rgba(255,255,255,.45),0 3px 0 #6f7863,0 24px 30px -14px rgba(30,42,31,.5)}
+.device-top,.device-bottom{display:flex;align-items:center;justify-content:space-between;font:400 17px/1 var(--display);letter-spacing:.14em}
+.device-top{margin-bottom:10px}
+.device-bottom{margin-top:10px}
+.led{display:inline-block;width:9px;height:9px;margin-right:8px;border-radius:50%;background:var(--red);box-shadow:0 0 0 1px var(--ink);vertical-align:middle}
+.screen,.pad{position:relative;aspect-ratio:3/4;width:100%;background:var(--paper);border:3px solid #5b6450;border-radius:6px;overflow:hidden;box-shadow:inset 0 0 0 1px rgba(30,42,31,.4)}
+.screen canvas,.pad canvas{position:absolute!important;inset:0;width:100%!important;height:100%!important;display:block;touch-action:none;cursor:var(--pen)}
+.fallback{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;gap:8px;padding:20px;background:var(--paper)}
+.fallback .fb-big{font:400 40px/1 var(--display);color:var(--ink);text-shadow:2px 2px 0 rgba(30,42,31,.14)}
+.fallback .fb-small{font:400 24px/1.1 var(--display);color:var(--ink)}
+.fallback.small .fb-small{font-size:20px}
+.is-live .fallback{display:none}
+.device-status,.pad-status{min-height:1.6em;margin-top:14px;font:500 14px/1.4 var(--text);text-align:center;color:var(--ink)}
+.is-ok{color:var(--ok)!important}
+.picks{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;align-items:center;margin-top:12px;font-size:13px}
+.picks button{font:500 13px/1 var(--text);text-transform:uppercase;letter-spacing:.06em;padding:9px 12px;background:var(--paper);color:var(--ink);border:2px solid var(--ink);cursor:pointer}
+.picks button:hover{background:var(--ink);color:var(--paper)}
+
+/* agenda */
+.agenda{padding:88px 0;border-top:1px solid var(--ink-line)}
+.kicker{font:500 13px/1.2 var(--text);text-transform:uppercase;letter-spacing:.12em;color:var(--ink-soft);margin-bottom:14px}
+h2{font-size:clamp(40px,7vw,68px)}
+.paper{background:var(--paper);border:2px solid var(--ink);box-shadow:6px 6px 0 var(--ink);padding:26px 22px}
+.entries{list-style:none;margin:8px 0 0;padding:0}
+.entry{position:relative;display:grid;grid-template-columns:auto minmax(0,1fr);gap:2px 16px;padding:12px 0;border-bottom:1px solid var(--ink-line)}
+.when{font:400 20px/1.2 var(--display);color:var(--ink-soft)}
+.what{font:500 15px/1.4 var(--text)}
+.scrib{grid-column:1/-1;width:100%;height:20px;fill:none;stroke:var(--ink);stroke-width:1.6;stroke-linecap:round;opacity:.75}
+.strike{position:absolute;left:-6px;right:-6px;top:62%;height:3px;background:var(--red);transform:scaleX(0);transform-origin:0 50%}
+.entry.is-final{opacity:.3}
+.entry.is-final .strike{transform:scaleX(1)}
+
+/* try */
+.try{display:grid;gap:40px;padding:80px 0;border-top:1px solid var(--ink-line);grid-template-columns:minmax(0,1fr)}
+@media (min-width:900px){.try{grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:start}}
+.try p.lead{font-size:17px;max-width:44ch;margin-bottom:20px}
+.shape-list{display:flex;flex-wrap:wrap;gap:8px;list-style:none;padding:0;margin:0 0 20px}
+.shape-list li{border:2px solid var(--ink);padding:6px 10px;font:500 13px/1 var(--text);text-transform:uppercase;letter-spacing:.06em;background:var(--paper)}
+.fine{font-size:13px;color:var(--ink-soft)}
+.pad-wrap{width:100%;max-width:380px;justify-self:center;min-width:0}
+
+/* plans */
+.plans{padding:80px 0;border-top:1px solid var(--ink-line)}
+.cards{display:grid;gap:30px;margin-top:36px;grid-template-columns:minmax(0,1fr)}
+@media (min-width:760px){.cards{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
+.card{background:var(--paper);border:2px solid var(--ink);box-shadow:8px 8px 0 var(--ink);padding:26px 24px 24px;transform-origin:0 50%;transition:transform .5s cubic-bezier(.2,.7,.2,1),box-shadow .5s}
+.card:hover,.card:focus-within{transform:perspective(900px) rotateY(-7deg);box-shadow:16px 10px 0 var(--ink)}
+.card-tag{font:500 12px/1.2 var(--text);letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:12px}
+.card h3{font-size:54px;margin-bottom:6px}
+.price{font:400 46px/1 var(--display);margin:14px 0 18px}
+.price span{font:400 14px/1.4 var(--text);color:var(--ink-soft)}
+.card ul{padding-left:18px;margin:0 0 26px}
+.card li{margin-bottom:4px}
+
+/* how */
+.how{padding:80px 0;border-top:1px solid var(--ink-line)}
+.steps{list-style:none;margin:36px 0 0;padding:0;display:grid;gap:18px;grid-template-columns:minmax(0,1fr)}
+@media (min-width:760px){.steps{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.step{background:var(--paper);border-top:4px solid var(--ink);padding:22px 20px 26px}
+.step .kicker{margin-bottom:12px;color:var(--ink)}
+.step h3{font:400 32px/1.02 var(--display)}
+
+/* footer */
+.foot{padding:40px 0 48px;border-top:2px solid var(--ink);display:flex;flex-direction:column;gap:6px}
+.foot p.note{color:var(--ink-soft);font-size:14px}
+.template-note{font:400 11px/1.4 var(--text);color:rgba(30,42,31,.6);margin-top:20px}
+
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{transition:none!important;animation:none!important}
+  .card:hover,.card:focus-within{transform:none;box-shadow:8px 8px 0 var(--ink)}
+  .device-tilt{transform:none!important}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <a class="mark" href="#top">Fallowline</a>
+  <nav aria-label="Main">
+    <a href="#how">How it works</a>
+    <a href="#plans">Plans</a>
+    <a href="#try">Try it</a>
+  </nav>
+</header>
+
+<main>
+<section class="hero" id="top">
+  <div class="hero-copy">
+    <p class="eyebrow">Pocket agenda with stylus, model FL-97</p>
+    <h1>Cancel the plans you never meant to keep.</h1>
+    <p class="sub">A pocket agenda with a stylus that reads your scribbles and strikes them out for you.</p>
+    <p class="call">Draw a plan. We'll make it disappear.</p>
+    <div class="actions">
+      <a class="btn" href="#plans">Start a loan</a>
+      <a class="btn ghost" href="#try">Try a cancellation</a>
+    </div>
+  </div>
+
+  <div class="device-stage">
+    <div class="device-scroll" id="device-scroll">
+      <div class="device-tilt" id="device-tilt">
+        <div class="device">
+          <div class="device-top"><span><i class="led"></i>FALLOWLINE</span><span>FL-97</span></div>
+          <div class="screen" id="screen" data-role="device">
+            <div class="fallback">
+              <p class="fb-big">Draw a plan.</p>
+              <p class="fb-small">We'll make it disappear.</p>
+            </div>
+          </div>
+          <div class="device-bottom"><span>STYLUS</span><span>&bull; &bull; &bull;</span></div>
+        </div>
+      </div>
+    </div>
+    <p class="device-status" id="device-status" aria-live="polite"></p>
+    <div class="picks" id="device-picks" hidden>
+      <span>Pick the shape:</span>
+      <button type="button" data-shape="line">Line</button>
+      <button type="button" data-shape="circle">Circle</button>
+      <button type="button" data-shape="x">X</button>
+      <button type="button" data-shape="arrow">Arrow</button>
+    </div>
+  </div>
+</section>
+
+<section class="agenda" id="agenda">
+  <p class="kicker">Week 47</p>
+  <h2>Still full.</h2>
+  <div class="paper" style="margin-top:32px">
+    <ol class="entries">
+      <li class="entry"><span class="when">Mon 09:00</span><span class="what">Dentist, the cleaning</span><svg class="scrib" viewBox="0 0 240 20" preserveAspectRatio="none" aria-hidden="true"><path d="M2 13 C30 3 48 17 76 9 S120 4 140 12 S190 16 238 6"/></svg><i class="strike" aria-hidden="true"></i></li>
+      <li class="entry"><span class="when">Tue 13:30</span><span class="what">Call back Dana</span><svg class="scrib" viewBox="0 0 240 20" preserveAspectRatio="none" aria-hidden="true"><path d="M2 8 C24 16 40 2 70 12 S112 18 140 6 S200 10 238 14"/></svg><i class="strike" aria-hidden="true"></i></li>
+      <li class="entry"><span class="when">Wed 18:00</span><span class="what">Quarterly review, optional</span><svg class="scrib" viewBox="0 0 240 20" preserveAspectRatio="none" aria-hidden="true"><path d="M4 10 C40 2 70 18 110 9 C150 2 190 16 236 9"/></svg><i class="strike" aria-hidden="true"></i></li>
+      <li class="entry"><span class="when">Thu 07:00</span><span class="what">Gym (again)</span><svg class="scrib" viewBox="0 0 240 20" preserveAspectRatio="none" aria-hidden="true"><path d="M2 14 C20 4 50 16 66 6 C86 16 110 4 130 14 S180 6 200 12 L236 8"/></svg><i class="strike" aria-hidden="true"></i></li>
+      <li class="entry"><span class="when">Fri 17:00</span><span class="what">Reply to the invitation</span><svg class="scrib" viewBox="0 0 240 20" preserveAspectRatio="none" aria-hidden="true"><path d="M2 9 C36 17 60 3 96 12 S150 4 180 14 S220 6 238 10"/></svg><i class="strike" aria-hidden="true"></i></li>
+      <li class="entry"><span class="when">Sat 20:00</span><span class="what">Dinner, maybe</span><svg class="scrib" viewBox="0 0 240 20" preserveAspectRatio="none" aria-hidden="true"><path d="M2 12 C28 4 56 18 88 8 S140 16 170 10 S214 4 238 12"/></svg><i class="strike" aria-hidden="true"></i></li>
+    </ol>
+  </div>
+</section>
+
+<section class="try" id="try">
+  <div>
+    <p class="kicker">How to cancel</p>
+    <h2>Draw it. Watch it go.</h2>
+    <p class="lead">Draw a line, a circle, an X or an arrow in the test area. The device reads the stroke and strikes it out.</p>
+    <ul class="shape-list">
+      <li>Line</li><li>Circle</li><li>X</li><li>Arrow</li>
+    </ul>
+    <p class="fine">Recognition takes less than 300 ms. Two misses and the shapes appear as buttons.</p>
+  </div>
+  <div class="pad-wrap">
+    <div class="pad" id="pad" data-role="pad">
+      <div class="fallback small">
+        <p class="fb-small">The test area needs the script. The four shapes are listed above.</p>
+      </div>
+    </div>
+    <p class="pad-status" id="pad-status" aria-live="polite">Draw here.</p>
+    <div class="picks" id="pad-picks" hidden>
+      <span>Pick the shape:</span>
+      <button type="button" data-shape="line">Line</button>
+      <button type="button" data-shape="circle">Circle</button>
+      <button type="button" data-shape="x">X</button>
+      <button type="button" data-shape="arrow">Arrow</button>
+    </div>
+  </div>
+</section>
+
+<section class="plans" id="plans">
+  <p class="kicker">Plans</p>
+  <h2>Two ways to let go.</h2>
+  <div class="cards">
+    <article class="card">
+      <p class="card-tag">Subscription</p>
+      <h3>The Loan</h3>
+      <p class="price">$12<span> / month</span></p>
+      <ul>
+        <li>The device, on loan for as long as you keep it</li>
+        <li>Stylus on a cord</li>
+        <li>A monthly pad of blank pages</li>
+      </ul>
+      <a class="btn" href="#top">Start a loan</a>
+    </article>
+    <article class="card">
+      <p class="card-tag">Cancellations</p>
+      <h3>Strike Pack</h3>
+      <p class="price">$25<span> / ten strikes</span></p>
+      <ul>
+        <li>Ten recognized cancellations</li>
+        <li>Single cancellations at $3 each</li>
+        <li>Use them whenever a plan dies</li>
+      </ul>
+      <a class="btn ghost" href="#top">Buy a pack</a>
+    </article>
+  </div>
+</section>
+
+<section class="how" id="how">
+  <p class="kicker">How it works</p>
+  <h2>Three steps. No paperwork.</h2>
+  <ol class="steps">
+    <li class="step"><p class="kicker">Write</p><h3>Write the plan on the screen with the stylus.</h3></li>
+    <li class="step"><p class="kicker">Recognize</p><h3>The device recognizes the stroke.</h3></li>
+    <li class="step"><p class="kicker">Strike</p><h3>The stroke is struck out, and the page goes blank.</h3></li>
+  </ol>
+</section>
+</main>
+
+<footer class="foot">
+  <p class="mark">Fallowline</p>
+  <p class="note">Pocket agenda with stylus. Ships in a felt pouch.</p>
+  <p class="template-note">Layout template. Figures and plans are placeholders until launch review.</p>
+</footer>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/2.3.4/p5.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.15.1/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.15.1/dist/ScrollTrigger.min.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var W = 360, H = 480, N = 48, THRESH = 0.14, GAP_MS = 450;
+  var INK = [30, 42, 31], PAPER = [228, 232, 214], RED = [214, 54, 43], LCD = [185, 194, 167];
+
+  /* ---------- geometry for the stroke recognizer ---------- */
+
+  function dist(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
+
+  function pathLen(pts) {
+    var len = 0;
+    for (var i = 1; i < pts.length; i++) len += dist(pts[i - 1], pts[i]);
+    return len;
+  }
+
+  // Equidistant resampling of one polyline into n points.
+  function resample(pts, n) {
+    var out = [{ x: pts[0].x, y: pts[0].y }];
+    var total = pathLen(pts);
+    if (total === 0 || n < 2) return out;
+    var interval = total / (n - 1), acc = 0, arr = pts.slice();
+    for (var i = 1; i < arr.length;) {
+      var d = dist(arr[i - 1], arr[i]);
+      if (acc + d >= interval) {
+        var t = (interval - acc) / d;
+        var q = { x: arr[i - 1].x + t * (arr[i].x - arr[i - 1].x), y: arr[i - 1].y + t * (arr[i].y - arr[i - 1].y) };
+        out.push(q);
+        arr.splice(i, 0, q);
+        acc = 0;
+      } else {
+        acc += d;
+      }
+      i++;
+    }
+    return out;
+  }
+
+  // Samples all strokes of a shape, sharing n points by stroke length.
+  function pool(strokes, n) {
+    var lens = [], total = 0, out = [], i;
+    for (i = 0; i < strokes.length; i++) { lens[i] = pathLen(strokes[i]); total += lens[i]; }
+    if (total === 0) return out;
+    for (i = 0; i < strokes.length; i++) {
+      if (lens[i] === 0) continue;
+      out = out.concat(resample(strokes[i], Math.max(2, Math.round(n * lens[i] / total))));
+    }
+    return out;
+  }
+
+  // Centers the points and scales them to their largest side (never below 60 px).
+  function normalize(pts) {
+    if (!pts.length) return pts;
+    var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity, i;
+    for (i = 0; i < pts.length; i++) {
+      minX = Math.min(minX, pts[i].x); maxX = Math.max(maxX, pts[i].x);
+      minY = Math.min(minY, pts[i].y); maxY = Math.max(maxY, pts[i].y);
+    }
+    var s = Math.max(maxX - minX, maxY - minY, 60);
+    var cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
+    return pts.map(function (p) { return { x: (p.x - cx) / s, y: (p.y - cy) / s }; });
+  }
+
+  // Symmetric chamfer distance between two point sets (lower is closer).
+  function chamfer(a, b) {
+    function half(p, q) {
+      var sum = 0;
+      for (var i = 0; i < p.length; i++) {
+        var m = Infinity;
+        for (var j = 0; j < q.length; j++) m = Math.min(m, dist(p[i], q[j]));
+        sum += m;
+      }
+      return sum / p.length;
+    }
+    return (half(a, b) + half(b, a)) / 2;
+  }
+
+  function seg(x0, y0, x1, y1) { return [{ x: x0, y: y0 }, { x: x1, y: y1 }]; }
+
+  function circlePts() {
+    var a = [];
+    for (var i = 0; i <= 36; i++) {
+      var t = i / 36 * Math.PI * 2;
+      a.push({ x: Math.cos(t) * 100, y: Math.sin(t) * 100 });
+    }
+    return a;
+  }
+
+  // Four shapes. Lines are stored at four angles so any straight stroke matches.
+  var TEMPLATES = [
+    ['line', [seg(-100, 0, 100, 0)]],
+    ['line', [seg(0, -100, 0, 100)]],
+    ['line', [seg(-100, -100, 100, 100)]],
+    ['line', [seg(-100, 100, 100, -100)]],
+    ['circle', [circlePts()]],
+    ['x', [seg(-100, -100, 100, 100), seg(100, -100, -100, 100)]],
+    ['arrow', [seg(-100, 0, 100, 0), seg(100, 0, 55, -45), seg(100, 0, 55, 45)]]
+  ].map(function (t) { return { name: t[0], pts: normalize(pool(t[1], N)) }; });
+
+  function recognize(strokes) {
+    var pts = normalize(pool(strokes, N));
+    if (pts.length < 4) return null;
+    var best = null;
+    TEMPLATES.forEach(function (t) {
+      var s = chamfer(pts, t.pts);
+      if (!best || s < best.score) best = { name: t.name, score: s };
+    });
+    return best;
+  }
+
+  function bounds(strokes) {
+    var b = { x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity };
+    strokes.forEach(function (s) {
+      s.forEach(function (p) {
+        b.x0 = Math.min(b.x0, p.x); b.x1 = Math.max(b.x1, p.x);
+        b.y0 = Math.min(b.y0, p.y); b.y1 = Math.max(b.y1, p.y);
+      });
+    });
+    return b;
+  }
+
+  var DEFAULT_BOX = { x0: 60, y0: 150, x1: 300, y1: 330 };
+
+  /* ---------- a p5 pad: the device screen and the test area ---------- */
+
+  function createPad(host, cfg) {
+    var st = {
+      strokes: [], cur: null, timer: 0, hold: 0, fails: 0,
+      phase: 'idle', label: '', strike: null, flashUntil: 0,
+      visible: true, canvas: null
+    };
+
+    function setStatus(text, ok) {
+      if (!cfg.status) return;
+      cfg.status.textContent = text;
+      cfg.status.classList.toggle('is-ok', !!ok);
+    }
+
+    function showPicks(on) { if (cfg.picks) cfg.picks.hidden = !on; }
+
+    function reset() {
+      clearTimeout(st.hold); st.hold = 0;
+      st.strokes = []; st.cur = null; st.strike = null;
+      st.phase = 'idle'; st.label = ''; st.fails = 0;
+      setStatus(cfg.idle, false);
+      showPicks(false);
+    }
+
+    function strikeNow(name, bb) {
+      clearTimeout(st.timer); st.timer = 0;
+      st.phase = 'striking';
+      st.label = name.toUpperCase();
+      st.strike = { x0: bb.x0 - 14, x1: bb.x1 + 14, y: (bb.y0 + bb.y1) / 2, t0: performance.now(), dur: reduce ? 0 : 560 };
+      st.fails = 0;
+      showPicks(false);
+      setStatus(cfg.recognized(name), false);
+    }
+
+    function finish() {
+      st.phase = 'hold';
+      if (cfg.flash && !reduce) st.flashUntil = performance.now() + 480;
+      setStatus(cfg.done, true);
+      st.hold = setTimeout(reset, cfg.holdMs);
+    }
+
+    function tryRecognize() {
+      st.timer = 0;
+      if (st.phase !== 'idle' || !st.strokes.length) return;
+      var res = recognize(st.strokes);
+      if (res && res.score <= THRESH) {
+        strikeNow(res.name, bounds(st.strokes));
+      } else {
+        st.fails++;
+        st.strokes = [];
+        setStatus(cfg.miss, false);
+        if (st.fails >= 2) showPicks(true);
+      }
+    }
+
+    function toLocal(e) {
+      var r = st.canvas.getBoundingClientRect();
+      return { x: (e.clientX - r.left) * W / r.width, y: (e.clientY - r.top) * H / r.height };
+    }
+
+    // Simulated pressure: slower strokes lay down a heavier line.
+    function addPoint(pt) {
+      var prev = st.cur[st.cur.length - 1], d = prev ? dist(prev, pt) : 0;
+      if (prev && d < 1.5) return;
+      st.cur.push({ x: pt.x, y: pt.y, w: Math.max(1.2, Math.min(4.2, 4.4 - d * 0.12)) });
+    }
+
+    function onDown(e) {
+      if (st.phase === 'striking') return;
+      if (st.phase === 'hold') reset();
+      clearTimeout(st.timer); st.timer = 0;
+      st.canvas.setPointerCapture(e.pointerId);
+      st.cur = [];
+      addPoint(toLocal(e));
+    }
+
+    function onMove(e) { if (st.cur) addPoint(toLocal(e)); }
+
+    function onUp() {
+      if (!st.cur) return;
+      var s = st.cur;
+      st.cur = null;
+      if (pathLen(s) > 24) {
+        st.strokes.push(s);
+        st.timer = setTimeout(tryRecognize, GAP_MS);
+      }
+    }
+
+    function drawInk(p, pts) {
+      p.stroke(INK[0], INK[1], INK[2]);
+      p.strokeCap(p.ROUND);
+      for (var i = 1; i < pts.length; i++) {
+        p.strokeWeight(pts[i].w);
+        p.line(pts[i - 1].x, pts[i - 1].y, pts[i].x, pts[i].y);
+      }
+    }
+
+    function drawStrike(p, now) {
+      var k = st.strike;
+      var prog = k.dur ? Math.min(1, (now - k.t0) / k.dur) : 1;
+      var xEnd = k.x0 + (k.x1 - k.x0) * prog;
+      p.stroke(RED[0], RED[1], RED[2]);
+      p.strokeCap(p.ROUND);
+      var px = k.x0, py = k.y + Math.sin(k.x0 * 0.05) * 2;
+      for (var x = k.x0 + 6; x <= xEnd; x += 6) {
+        var y = k.y + Math.sin(x * 0.05) * 2;
+        p.strokeWeight(reduce ? 3 : 2 + 3 * prog);
+        p.line(px, py, x, y);
+        px = x; py = y;
+      }
+      return prog;
+    }
+
+    new window.p5(function (p) {
+      p.setup = function () {
+        p.createCanvas(W, H);
+        p.pixelDensity(Math.min(2, window.devicePixelRatio || 1));
+        st.canvas = p.canvas;
+        st.canvas.setAttribute('role', 'img');
+        st.canvas.setAttribute('aria-label', cfg.aria);
+        st.canvas.addEventListener('pointerdown', onDown);
+        st.canvas.addEventListener('pointermove', onMove);
+        st.canvas.addEventListener('pointerup', onUp);
+        st.canvas.addEventListener('pointercancel', onUp);
+        if ('IntersectionObserver' in window) {
+          new IntersectionObserver(function (es) { st.visible = es[0].isIntersecting; }).observe(host);
+        }
+        host.classList.add('is-live');
+      };
+
+      p.draw = function () {
+        if (!st.visible) return;
+        var now = performance.now();
+        p.background(PAPER[0], PAPER[1], PAPER[2]);
+
+        // pixel grid
+        p.stroke(INK[0], INK[1], INK[2], 26);
+        p.strokeWeight(1);
+        var gx, gy;
+        for (gx = 0; gx < W; gx += 12) p.line(gx, 44, gx, H);
+        for (gy = 44; gy < H; gy += 12) p.line(0, gy, W, gy);
+
+        // header bar with LCD ghost
+        p.noStroke();
+        p.fill(LCD[0], LCD[1], LCD[2]);
+        p.rect(0, 0, W, 44);
+        p.textFont('VT323');
+        p.textSize(30);
+        var title = cfg.title + (st.label ? '  ' + st.label : '');
+        p.fill(INK[0], INK[1], INK[2], 60);
+        p.text(title, 15, 34);
+        p.fill(INK[0], INK[1], INK[2]);
+        p.text(title, 14, 33);
+
+        // idle prompt with blinking cursor
+        if (st.phase === 'idle' && !st.strokes.length && !st.cur) {
+          p.textSize(40);
+          p.fill(INK[0], INK[1], INK[2], 150);
+          p.text(cfg.prompt + (Math.floor(now / 500) % 2 ? ' ' : '_'), 24, 150);
+        }
+
+        st.strokes.forEach(function (s) { drawInk(p, s); });
+        if (st.cur) drawInk(p, st.cur);
+
+        if (st.strike) {
+          drawStrike(p, now);
+          if (st.phase === 'striking' && now - st.strike.t0 >= st.strike.dur + (reduce ? 0 : 260)) finish();
+        }
+
+        // LCD blink once after the strike
+        if (now < st.flashUntil && Math.floor(now / 110) % 2 === 0) {
+          p.noStroke();
+          p.fill(INK[0], INK[1], INK[2], 90);
+          p.rect(0, 0, W, H);
+        }
+      };
+    }, host);
+
+    return {
+      pick: function (name) {
+        if (st.phase !== 'idle') return;
+        strikeNow(name, st.strokes.length ? bounds(st.strokes) : DEFAULT_BOX);
+      }
+    };
+  }
+
+  /* ---------- motion: GSAP and ScrollTrigger, desktop only, never with reduced motion ---------- */
+
+  function initMotion() {
+    var gsap = window.gsap;
+    if (!gsap) return;
+    var ST = window.ScrollTrigger;
+    if (ST) gsap.registerPlugin(ST);
+
+    if (reduce) {
+      document.querySelectorAll('.entry').forEach(function (el) { el.classList.add('is-final'); });
+      return;
+    }
+
+    var mm = gsap.matchMedia();
+    mm.add('(min-width: 768px)', function () {
+      var dev = document.getElementById('device-scroll');
+      var tilt = document.getElementById('device-tilt');
+      var hero = document.getElementById('top');
+
+      gsap.from('.device', { opacity: 0, scale: 0.94, y: 30, duration: 1.1, ease: 'power3.out' });
+      if (ST) {
+        gsap.to(dev, {
+          y: 90, rotationX: 12, ease: 'none',
+          scrollTrigger: { trigger: hero, start: 'top top', end: 'bottom top', scrub: true }
+        });
+      }
+
+      if (window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
+        hero.addEventListener('pointermove', function (e) {
+          var r = hero.getBoundingClientRect();
+          var nx = (e.clientX - r.left) / r.width - 0.5;
+          var ny = (e.clientY - r.top) / r.height - 0.5;
+          tilt.style.transform = 'rotateX(' + (-ny * 6).toFixed(2) + 'deg) rotateY(' + (nx * 8).toFixed(2) + 'deg)';
+        });
+        hero.addEventListener('pointerleave', function () { tilt.style.transform = ''; });
+      }
+    });
+
+    if (ST) {
+      var tl = gsap.timeline({
+        scrollTrigger: { trigger: '.entries', start: 'top 80%', end: 'bottom 40%', scrub: true }
+      });
+      document.querySelectorAll('.entry').forEach(function (el) {
+        tl.to(el.querySelector('.strike'), { scaleX: 1, duration: 1, ease: 'none' })
+          .to(el, { opacity: 0.3, duration: 0.6, ease: 'none' }, '-=0.3');
+      });
+      gsap.from('.step', {
+        opacity: 0, y: 24, duration: 0.6, stagger: 0.15,
+        scrollTrigger: { trigger: '.steps', start: 'top 80%' }
+      });
+    }
+  }
+
+  function wirePicks(container, pad) {
+    if (!container || !pad) return;
+    container.querySelectorAll('button[data-shape]').forEach(function (b) {
+      b.addEventListener('click', function () { pad.pick(b.getAttribute('data-shape')); });
+    });
+  }
+
+  function init() {
+    var screen = document.getElementById('screen');
+    var padHost = document.getElementById('pad');
+    if (window.p5 && screen) {
+      var device = createPad(screen, {
+        title: 'FALLOWLINE',
+        prompt: 'Draw a plan.',
+        aria: 'Pocket agenda screen. Draw a plan with the stylus to cancel it.',
+        status: document.getElementById('device-status'),
+        picks: document.getElementById('device-picks'),
+        idle: '',
+        miss: 'Not sure. Draw it again.',
+        recognized: function (n) { return 'Recognized: ' + n + '.'; },
+        done: 'Cancelled. Nobody noticed.',
+        holdMs: 2600,
+        flash: true
+      });
+      wirePicks(document.getElementById('device-picks'), device);
+    }
+    if (window.p5 && padHost) {
+      var pad = createPad(padHost, {
+        title: 'TEST',
+        prompt: 'Draw here.',
+        aria: 'Test area. Draw a shape to see recognition.',
+        status: document.getElementById('pad-status'),
+        picks: document.getElementById('pad-picks'),
+        idle: 'Draw a shape. Recognition takes under 300 ms.',
+        miss: 'Not sure. Try the shape again.',
+        recognized: function (n) { return 'Recognized: ' + n + '. Struck out.'; },
+        done: 'Struck out. Draw another.',
+        holdMs: 1800,
+        flash: false
+      });
+      wirePicks(document.getElementById('pad-picks'), pad);
+    }
+    initMotion();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>Vitrine — Galeria de landing pages experimentais</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --wall: #0d0d0e;
+    --wall-2: #151517;
+    --ink: #ece8df;
+    --ink-dim: #9a968c;
+    --spot: #fff4dc;
+    --accent: #d9452b;
+    --line: #2a2a2d;
+    --serif: "Instrument Serif", Georgia, serif;
+    --mono: "Space Mono", ui-monospace, monospace;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--wall);
+    color: var(--ink);
+    font-family: var(--mono);
+    font-size: 14px;
+    line-height: 1.6;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 0 80px;
+    overflow-x: hidden;
+  }
+  .spotlight {
+    position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    background: radial-gradient(600px circle at var(--mx, 50%) var(--my, 30%), rgba(255,244,220,.09), transparent 60%);
+  }
+  header.hero {
+    position: relative; z-index: 1;
+    min-height: 88vh;
+    display: grid; align-content: end;
+    padding-block: 96px 56px;
+    border-bottom: 1px solid var(--line);
+  }
+  .eyebrow { color: var(--ink-dim); text-transform: uppercase; letter-spacing: .18em; font-size: 12px; }
+  h1 {
+    font-family: var(--serif); font-weight: 400;
+    font-size: clamp(56px, 12vw, 180px);
+    line-height: .9; letter-spacing: -.02em; margin: 16px 0 24px;
+    text-wrap: balance;
+  }
+  h1 em { font-style: italic; color: var(--spot); }
+  .lede { max-width: 56ch; color: var(--ink-dim); margin: 0; }
+  .toolbar {
+    position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
+    display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+    padding: 16px 0; background: rgba(13,13,14,.92); backdrop-filter: blur(6px);
+    border-bottom: 1px solid var(--line);
+  }
+  .toolbar .count { margin-left: auto; color: var(--ink-dim); font-size: 12px; }
+  .chip {
+    font: inherit; font-size: 12px; color: var(--ink);
+    background: transparent; border: 1px solid var(--line);
+    padding: 6px 12px; cursor: pointer; border-radius: 999px;
+  }
+  .chip[aria-pressed="true"] { background: var(--ink); color: var(--wall); border-color: var(--ink); }
+  .chip:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+  main { position: relative; z-index: 1; padding-top: 48px; }
+  .wall {
+    display: grid; gap: 40px 28px;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  }
+  .piece {
+    display: flex; flex-direction: column; gap: 14px;
+    text-decoration: none; color: inherit;
+  }
+  .canvas {
+    position: relative; aspect-ratio: var(--ratio, 4 / 5);
+    background: linear-gradient(160deg, var(--a), var(--b));
+    border: 1px solid var(--line);
+    overflow: hidden;
+    transition: transform .4s ease;
+  }
+  .canvas::after {
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background: radial-gradient(260px circle at var(--px, 50%) var(--py, 50%), rgba(255,244,220,.28), transparent 60%);
+    opacity: 0; transition: opacity .3s ease;
+  }
+  .piece:hover .canvas, .piece:focus-visible .canvas { transform: translateY(-4px); }
+  .piece:hover .canvas::after, .piece:focus-visible .canvas::after { opacity: 1; }
+  .piece:focus-visible { outline: none; }
+  .piece:focus-visible .canvas { outline: 2px solid var(--accent); outline-offset: 4px; }
+  .num { position: absolute; left: 12px; top: 10px; font-size: 12px; color: rgba(255,255,255,.7); }
+  .label { display: grid; gap: 6px; border-top: 1px solid var(--line); padding-top: 12px; }
+  .label h2 { font-family: var(--serif); font-weight: 400; font-size: 30px; line-height: 1.05; margin: 0; }
+  .label .meta { color: var(--ink-dim); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; }
+  .label p { margin: 0; color: var(--ink-dim); font-size: 13px; }
+  .open { color: var(--ink); font-size: 12px; text-transform: uppercase; letter-spacing: .12em; }
+  .piece:hover .open { color: var(--accent); }
+  .piece[hidden] { display: none; }
+  footer { position: relative; z-index: 1; margin-top: 96px; border-top: 1px solid var(--line); padding-top: 24px; color: var(--ink-dim); font-size: 12px; }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    .canvas { transition: none; }
+    .reveal { opacity: 1 !important; transform: none !important; }
+  }
+</style>
+</head>
+<body>
+  <div class="spotlight" aria-hidden="true"></div>
+
+  <header class="hero">
+    <p class="eyebrow">Vitrine · Mostra permanente · 20 experimentos</p>
+    <h1>Sites <em>que</em> não<br>parecem sites</h1>
+    <p class="lede">Uma sala de exposição de landing pages em que cada peça é uma marca inventada, uma época do passado e uma técnica diferente: WebGL, Three.js, canvas, p5.js, SVG, CSS 3D. Entre numa peça, sinta o ritmo dela, volte.</p>
+  </header>
+
+  <div class="toolbar" role="toolbar" aria-label="Filtrar por técnica">
+    <button class="chip" aria-pressed="true" data-filter="all">Todas</button>
+    <button class="chip" aria-pressed="false" data-filter="three">Three.js</button>
+    <button class="chip" aria-pressed="false" data-filter="canvas">Canvas e WebGL</button>
+    <button class="chip" aria-pressed="false" data-filter="p5">p5.js</button>
+    <button class="chip" aria-pressed="false" data-filter="svg">SVG e CSS</button>
+    <span class="count" id="count">20 peças</span>
+  </div>
+
+  <main>
+    <section class="wall" id="wall" aria-label="Peças da exposição"></section>
+  </main>
+
+  <footer>
+    Vitrine é uma mostra de layouts experimentais. As marcas são inventadas; o aviso de template de cada peça está no rodapé dela.
+  </footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.15.1/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.15.1/ScrollTrigger.min.js"></script>
+<script>
+  const WORKS = [
+    { n: "01", slug: "01-pager-voxel", name: "LONG TONE PAGER CO.", era: "1994", tech: "three", techLabel: "Three.js · voxel", biz: "Pagers de via única que só tocam quando alguém tem algo a dizer, com atraso de 24 a 72 horas.", a: "#1b2a1b", b: "#0a140a", ratio: "4 / 5" },
+    { n: "02", slug: "02-tamagotchi-p5", name: "Vigil Idle Co.", era: "1996", tech: "p5", techLabel: "p5.js · generativo", biz: "Um bichinho de LCD que só cresce quando ninguém olha para ele. Cobrado por hora de ausência.", a: "#2a2d2a", b: "#121412", ratio: "1 / 1" },
+    { n: "03", slug: "03-vhs-crt", name: "Tracking Noturno", era: "1985", tech: "canvas", techLabel: "WebGL · shader CRT", biz: "Locadora de fitas gravadas com a TV fora do ar de madrugada, para quem não dorme sem um chiado.", a: "#241a33", b: "#0b0812", ratio: "3 / 4" },
+    { n: "04", slug: "04-polaroid-grain", name: "Dias Expostos", era: "1970s", tech: "canvas", techLabel: "WebGL · grão de filme", biz: "Laboratório que revela filme nunca exposto: uma foto instantânea de uma tarde que nunca aconteceu.", a: "#3a3427", b: "#16130d", ratio: "4 / 5" },
+    { n: "05", slug: "05-telex-canvas", name: "Tira Lenta", era: "1970s", tech: "canvas", techLabel: "Canvas 2D · telex", biz: "Digita sua mensagem num teleimpressor e despacha uma tira selada para a data que você escolher.", a: "#2d2a22", b: "#0f0e0b", ratio: "2 / 3" },
+    { n: "06", slug: "06-floppy-three", name: "Sectorwrit", era: "1990", tech: "three", techLabel: "Three.js · disquete 3D", biz: "Escreve uma única mensagem à mão num disquete de 3,5 polegadas e despacha o disco selado.", a: "#1f2633", b: "#0a0d14", ratio: "1 / 1" },
+    { n: "07", slug: "07-gameboy-pixel", name: "Pausa Cinza", era: "1989", tech: "canvas", techLabel: "Canvas 2D · pixel", biz: "Aluga por fim de semana um console de tela cinza e sem jogos, para um período deliberadamente entediante.", a: "#2b2e2a", b: "#101210", ratio: "4 / 5" },
+    { n: "08", slug: "08-walkman-visualizer", name: "Rebobina Lenta", era: "1984", tech: "three", techLabel: "Three.js · visual de áudio", biz: "Grava a mensagem que você não consegue dizer em voz alta, numa fita cassete, e a envia com atraso escolhido.", a: "#2e2116", b: "#130c07", ratio: "3 / 4" },
+    { n: "09", slug: "09-cybercafe-css3d", name: "Linha Ocupada", era: "2001", tech: "svg", techLabel: "CSS 3D · cibercafé", biz: "Cabines de computador de tubo com a conexão discada de propósito ocupada. Você paga para esperar.", a: "#14222a", b: "#070d11", ratio: "4 / 5" },
+    { n: "10", slug: "10-flipclock-svg", name: "Pausa Alugada", era: "1980s", tech: "svg", techLabel: "SVG · GSAP", biz: "Blocos de vinte minutos sem agenda e sem ninguém cobrando resposta, entregues como um cartão.", a: "#2a2622", b: "#11100e", ratio: "1 / 1" },
+    { n: "11", slug: "11-overhead-parallax", name: "Quistermo", era: "1970s", tech: "svg", techLabel: "GSAP · parallax", biz: "Consultoria de decisão: cada pessoa escreve sua posição num acetato, e só o que aparece em todas as folhas é registrado.", a: "#2c2a1f", b: "#0e0d09", ratio: "3 / 4" },
+    { n: "12", slug: "12-teletext-grid", name: "Sintonia Vazia", era: "1980s", tech: "svg", techLabel: "CSS grid · ruído", biz: "Um canal de teletexto sem programação: uma página por dia, com uma coisa útil e breve.", a: "#0a1b2e", b: "#050c16", ratio: "4 / 5" },
+    { n: "13", slug: "13-arcade-sprite", name: "Dead Quarter Parlor", era: "1982", tech: "canvas", techLabel: "Canvas 2D · sprites", biz: "Aluga um gabinete de fliperama que nunca joga. Uma moeda para ver um sprite dormir por noventa segundos.", a: "#2a1420", b: "#12070d", ratio: "2 / 3" },
+    { n: "14", slug: "14-lavalamp-shader", name: "Mirrel", era: "1970s", tech: "canvas", techLabel: "WebGL · metaballs", biz: "Luminárias de lava afinadas à mão, com calendário de aquecimento, para quem quer olhar algo que muda devagar.", a: "#2e1a0f", b: "#120a05", ratio: "4 / 5" },
+    { n: "15", slug: "15-typewriter-reveal", name: "Tecla Vermelha", era: "1960s", tech: "svg", techLabel: "GSAP · texto", biz: "Datilografa as cartas que você decidiu não enviar, guarda o original lacrado e leva a cópia de carbono.", a: "#2a1212", b: "#100606", ratio: "3 / 4" },
+    { n: "16", slug: "16-ps1-lowpoly", name: "Dorsal Hour Co.", era: "1995", tech: "three", techLabel: "Three.js · low-poly", biz: "Cochilos de vinte e cinco minutos em cápsulas de papelão do tamanho de um berço, entregues por van.", a: "#1c2a24", b: "#0a130f", ratio: "4 / 5" },
+    { n: "17", slug: "17-dialup-waveform", name: "Hold Tone Supply", era: "1996", tech: "canvas", techLabel: "Canvas 2D · forma de onda", biz: "Minutos de espera deliberada: você paga para ver a negociação de um modem antes de ela acontecer.", a: "#1a2430", b: "#0a1018", ratio: "1 / 1" },
+    { n: "18", slug: "18-drivein-retro3d", name: "Orlumbe Lot", era: "1950s", tech: "svg", techLabel: "SVG · perspectiva", biz: "Aluga por noite a tela e o estacionamento de um drive-in fechado para exibir seu filme caseiro ao carro.", a: "#2b1b33", b: "#110a14", ratio: "4 / 5" },
+    { n: "19", slug: "19-voxel-world", name: "Plinthwick", era: "1990s", tech: "three", techLabel: "Three.js · voxel", biz: "Um cubo de 16 × 16 × 16 blocos numa cidade de voxel compartilhada, e blocos à venda para mobiliar o espaço.", a: "#1e2a14", b: "#0b1107", ratio: "3 / 4" },
+    { n: "20", slug: "20-palm-stylus", name: "Fallowline", era: "1997", tech: "p5", techLabel: "p5.js · reconhecimento", biz: "Agenda de bolso com stylus: você rabisca um compromisso, o aparelho reconhece e risca, e cobra por cancelamento.", a: "#26262e", b: "#0e0e12", ratio: "4 / 5" }
+  ];
+
+  const wall = document.getElementById("wall");
+  const countEl = document.getElementById("count");
+
+  const esc = s => s.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+  wall.innerHTML = WORKS.map(w => `
+    <a class="piece reveal" href="sites/${w.slug}/index.html" data-tech="${w.tech}" aria-label="Abrir ${esc(w.name)}, ${w.era}">
+      <div class="canvas" style="--a:${w.a};--b:${w.b};--ratio:${w.ratio}">
+        <span class="num">No. ${w.n}</span>
+      </div>
+      <div class="label">
+        <h2>${esc(w.name)}</h2>
+        <span class="meta">${w.era} · ${esc(w.techLabel)}</span>
+        <p>${esc(w.biz)}</p>
+        <span class="open">Entrar na peça →</span>
+      </div>
+    </a>`).join("");
+
+  // Filtro por técnica
+  const chips = document.querySelectorAll(".chip");
+  chips.forEach(chip => chip.addEventListener("click", () => {
+    const f = chip.dataset.filter;
+    chips.forEach(c => c.setAttribute("aria-pressed", String(c === chip)));
+    let shown = 0;
+    wall.querySelectorAll(".piece").forEach(p => {
+      const match = f === "all" || p.dataset.tech === f;
+      p.hidden = !match;
+      if (match) shown++;
+    });
+    countEl.textContent = shown + (shown === 1 ? " peça" : " peças");
+  }));
+
+  // Luz que segue o ponteiro
+  const spot = document.querySelector(".spotlight");
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (!reduce) {
+    window.addEventListener("pointermove", e => {
+      document.documentElement.style.setProperty("--mx", e.clientX + "px");
+      document.documentElement.style.setProperty("--my", e.clientY + "px");
+    }, { passive: true });
+    wall.addEventListener("pointermove", e => {
+      wall.querySelectorAll(".canvas").forEach(c => {
+        const r = c.getBoundingClientRect();
+        c.style.setProperty("--px", (e.clientX - r.left) + "px");
+        c.style.setProperty("--py", (e.clientY - r.top) + "px");
+      });
+    });
+  }
+
+  // Entrada das peças ao rolar (sem reveal se movimento reduzido)
+  if (!reduce && window.gsap && window.ScrollTrigger) {
+    gsap.registerPlugin(ScrollTrigger);
+    gsap.from(".hero h1", { y: 60, opacity: 0, duration: 1.2, ease: "power3.out" });
+    gsap.from(".piece", {
+      y: 40, opacity: 0, duration: .9, ease: "power2.out", stagger: .06,
+      scrollTrigger: { trigger: "#wall", start: "top 85%", once: true }
+    });
+  }
+</script>
+</body>
+</html>
