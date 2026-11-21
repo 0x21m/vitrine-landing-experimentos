@@ -150,6 +150,11 @@ h2{font-size:clamp(1.8rem,3.6vw,2.7rem);line-height:1.1;margin-bottom:18px}
 .scroll-fx .tail{display:block;height:110vh;height:110dvh}
 @media (max-width:767px){
   .scroll-fx .hero,.scroll-fx .shutter,.scroll-fx .message{justify-content:flex-end;padding-bottom:36px}
+  .scroll-fx .shutter .copy,.scroll-fx .message .copy{background:var(--bg);padding-top:14px}
+  .sheet{padding:16px 16px 20px 44px}
+  .sheet::before{left:24px}
+  .msg-line{font-size:17px;line-height:28px}
+  .sheet-head{line-height:28px}
 }
 
 @media (prefers-reduced-motion: reduce){
@@ -417,8 +422,8 @@ async function start() {
     camera.aspect = w / h;
     camera.position.set(0, 0, side ? 9 : 12);
     camera.updateProjectionMatrix();
-    disk.position.set(side ? 1.35 : 0, side ? 0 : 0.9, 0);
-    disk.scale.setScalar(side ? (w / h < 1.5 ? 0.85 : 1) : 0.85);
+    disk.position.set(side ? 1.35 : 0, side ? 0 : 1.6, 0);
+    disk.scale.setScalar(side ? (w / h < 1.5 ? 0.85 : 1) : 0.7);
   }
 
   function render(t) {
